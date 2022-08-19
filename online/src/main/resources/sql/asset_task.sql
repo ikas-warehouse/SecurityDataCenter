@@ -1,0 +1,21 @@
+CREATE TABLE `assets_task` (
+     `task_id` varchar(32) NOT NULL,
+     `task_name` varchar(255) DEFAULT NULL,
+     `task_type` varchar(255) DEFAULT NULL,
+     `agent_id` varchar(255) DEFAULT NULL,
+     `begin_time` varchar(255) DEFAULT NULL,
+     `last_execute_time` varchar(255) DEFAULT NULL,
+     `finish_time` varchar(255) DEFAULT NULL,
+     `execution_cycle` varchar(255) DEFAULT NULL,
+     `execution_count` varchar(255) DEFAULT NULL,
+     `execution_speed` varchar(255) DEFAULT NULL,
+     `task_state` varchar(255) DEFAULT NULL,
+     `task_describe` varchar(255),
+     `ips` varchar(255),
+     `ports` varchar(255),
+     `user_names` varchar(255),
+     `user_passwords` varchar(255),
+     `scan_type` varchar(255),
+     `protocol_type` varchar(255),
+     `alert_switch` int(1) DEFAULT '1' COMMENT '告警开关0关闭、1打开'
+) distributed by hash(task_id) BUCKETS 1;
