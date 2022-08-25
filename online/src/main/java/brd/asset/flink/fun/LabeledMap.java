@@ -28,7 +28,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
 
     private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private static final String DB_URL_PATTERN = "jdbc:mysql://%s:%s/%s?rewriteBatchedStatements=true";
-    private static final String FORMAT_PATTERN = "yyyy-MM-dd hh:mm:ss";
+    private static final String FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
     private String HOST; // Leader Node host
     private String PORT;   // http port of Leader Node
     private String DB;
@@ -104,7 +104,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
 
             //时间格式校对,满足doris的datetime格式
             String scanTime = scan.getScan_time();
-            boolean validDate = TimeUtils.validDate(scanTime, FORMAT_PATTERN);
+            boolean validDate = TimeUtils.validDate2(scanTime, FORMAT_PATTERN);
             if(!validDate){
                 return null;
             }
