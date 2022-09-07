@@ -2,6 +2,8 @@ package brd.common;
 
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 /**
@@ -58,7 +60,7 @@ public class TimeUtils {
     public static boolean validDate(String dateStr, String pattern){
         try {
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-            simpleDateFormat.format(dateStr);
+            simpleDateFormat.parse(dateStr);
             return true;
         }catch (Exception e){
             return false;
@@ -75,10 +77,21 @@ public class TimeUtils {
         return String.valueOf(Integer.valueOf(date) - gapDays);
     }
 
+    /**
+     * 获取当前时间并格式化
+     * @param pattern
+     * @return
+     */
+    public static String getNow(String pattern){
+        //格式化
+        DateTimeFormatter fmDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return fmDate.format(LocalDateTime.now());
+    }
     public static void main(String[] args) {
         System.out.println(getCurrentDate("yyyyMMdd"));
         System.out.println(getPreDate(getCurrentDate("yyyyMMdd"), 1));
         System.out.println(convertTimestamp2Date(1597126260000L, "yyyy-MM-dd hh:mm:ss"));
         System.out.println(getTimestamp("yyyy-MM-dd hh:mm:ss", "2022-08-08 17:00:00"));
+        System.out.println(getNow("yyyy-MM-dd HH:mm:ss"));
     }
 }

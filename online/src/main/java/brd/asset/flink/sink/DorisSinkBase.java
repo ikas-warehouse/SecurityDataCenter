@@ -48,7 +48,8 @@ public class DorisSinkBase {
                         .setStreamLoadProp(pro).build(),
                 DorisOptions.builder()
                         //todo 集群地址改造
-                        .setFenodes(host + port)
+                        //.setFenodes(host  + ":"+ port)
+                        .setFenodes(host  + ":8031")
                         .setTableIdentifier(db + "." + table)
                         .setUsername(user)
                         .setPassword(pw).build()

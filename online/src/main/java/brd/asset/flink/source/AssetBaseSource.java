@@ -22,7 +22,7 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
     private Timer timer;
 
     private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-    private static final String DB_URL_PATTERN = "jdbc:mysql://%s:%s/%s?rewriteBatchedStatements=true";
+    private static final String DB_URL_PATTERN = "jdbc:mysql://%s:%s/%s?rewriteBatchedStatements=true&useSSL=false";
     private String HOST; // Leader Node host
     private String PORT;   // http port of Leader Node
     private String DB;
@@ -72,7 +72,7 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
                     e.printStackTrace();
                 }
             }
-        }, 1000, 1 * 1 * 10 * 1000);
+        }, 1000, 1 * 10 * 60 * 1000);
         while (isRunning) {
             if (data != null) {
                 //sourceContext.collect(String.join("|", data));
@@ -106,6 +106,7 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
                 AssetBase assetBase = JSONObject.toJavaObject(jsonObject, AssetBase.class);
                 list.add(assetBase);
             }
+            return list;
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,6 +1,7 @@
 package brd.asset.flink.task;
 
 import brd.asset.pojo.test.P01;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -24,7 +25,7 @@ public class FlinkTableSinkDoris {
         env.setParallelism(1);
         final StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
         //doris table
-        tEnv.executeSql(
+        /*tEnv.executeSql(
                 "CREATE TABLE doris_test_sink (" +
                         "id INT," +
                         "time1 string," +
@@ -56,10 +57,30 @@ public class FlinkTableSinkDoris {
         tEnv.toDataStream(result).print();
 
         tEnv.executeSql("insert into doris_test_sink select id, time1, score from " + table);
-        /*Table query = tEnv.sqlQuery("select * from doris_test_sink");
-        tEnv.toDataStream(query).print("doris rs: ");*/
+        *//*Table query = tEnv.sqlQuery("select * from doris_test_sink");
+        tEnv.toDataStream(query).print("doris rs: ");*//*
 
-        env.execute("test table api");
+        env.execute("test table api");*/
+
+        tEnv.executeSql(
+                "CREATE TABLE testUnique (" +
+                        "id INT,\n" +
+                        "value1 INT,\n" +
+                        "value2 INT,\n" +
+                        "value3 INT\n" +
+                        ") " +
+                        "WITH (\n" +
+                        "  'connector' = 'doris',\n" +
+                        "  'fenodes' = '192.168.5.91:8031',\n" +
+                        "  'table.identifier' = 'sdc.testUnique',\n" +
+                        "  'sink.batch.size' = '1',\n" +
+                        "  'username' = 'root',\n" +
+                        "  'password' = '000000'\n" +
+                        ")");
+
+        DataStreamSource<Integer> source = env.fromElements(1, 2, 3, 4);
+
+        tEnv.executeSql("insert into testUnique values(1,555,444,555)" );
 
     }
 }

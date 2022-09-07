@@ -27,8 +27,8 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
     private static Logger LOG = Logger.getLogger(LabeledMap.class);
 
     private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-    private static final String DB_URL_PATTERN = "jdbc:mysql://%s:%s/%s?rewriteBatchedStatements=true";
-    private static final String FORMAT_PATTERN = "yyyy-MM-dd hh:mm:ss";
+    private static final String DB_URL_PATTERN = "jdbc:mysql://%s:%s/%s?rewriteBatchedStatements=true&useSSL=false";
+    private static final String FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
     private String HOST; // Leader Node host
     private String PORT;   // http port of Leader Node
     private String DB;
@@ -135,6 +135,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
 
             boolean isSwitchOrRoute = false;
             if (matchedLabels.size() == 0) {
+                System.out.println("scan1: " + scan);
                 return scan;
             } else {
                 String separator = ",";
@@ -152,6 +153,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
                     jsonObject.put("IPAddress", scan.getDevice_ip());
                 }
                 scan.setLabel_id(StringUtils.join(labelIds, separator));
+                System.out.println("scan2: " + scan);
                 return scan;
             }
         }
