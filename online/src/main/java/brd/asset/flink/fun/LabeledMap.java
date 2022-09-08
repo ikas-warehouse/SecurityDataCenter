@@ -95,7 +95,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
                     }
                 }
             }
-        }, 1000, 1 * 30 * 60 * 1000);
+        }, 100, 1 * 30 * 60 * 1000);
     }
 
     @Override
@@ -133,7 +133,6 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
 
             Set<Tuple3<Integer, String, String>> matchedLabels = matchLabel(labelInputInfo);
 
-            boolean isSwitchOrRoute = false;
             if (matchedLabels.size() == 0) {
                 System.out.println("scan1: " + scan);
                 return scan;
@@ -147,13 +146,9 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
                     type1List.add(label.f1);
                     type2List.add(label.f2);
                 }
-                if (isSwitchOrRoute) {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("TaskID", taskID);
-                    jsonObject.put("IPAddress", scan.getDevice_ip());
-                }
                 scan.setLabel_id(StringUtils.join(labelIds, separator));
                 System.out.println("scan2: " + scan);
+
                 return scan;
             }
         }

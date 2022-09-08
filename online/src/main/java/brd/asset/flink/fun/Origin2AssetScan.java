@@ -2,7 +2,6 @@ package brd.asset.flink.fun;
 
 import brd.asset.constants.ScanCollectConstant;
 import brd.asset.entity.AssetScanTask;
-import brd.asset.pojo.AssetScanOrigin;
 import brd.asset.pojo.DataBaseInfoScan;
 import brd.asset.pojo.MessageOrientedMiddlewareScan;
 import brd.asset.pojo.OpenServiceOfPort;

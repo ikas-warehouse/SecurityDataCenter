@@ -31,23 +31,26 @@ public class AssetScanTask {
      *     label_type1 varchar(255) DEFAULT "" COMMENT'一级标签',
      *     label_type2 varchar(255) DEFAULT "" COMMENT'二级标签'
      */
-    private String asset_id;
-    private String task_id;
-    private String scan_time;
-    private String device_name;
-    private String device_ip;
-    private String device_ip_ownership;
-    private String device_mac;
-    private String device_type;
-    private String data_base_info;
-    private String kernel_version;
-    private String message_oriented_middleware;
-    private String open_service_of_port;
-    private String os_info;
-    private String patch_properties;
-    private String program_info;
-    private String system_fingerprint_info;
-    private String label_id;
-    private String label_type1;
-    private String label_type2;
+    public String asset_id;
+    public String task_id;
+    public String scan_time;
+    public String device_name;
+    public String device_ip;
+    public String device_ip_ownership;
+    public String device_mac;
+    public String device_type;
+    public String data_base_info;
+    public String kernel_version;
+    public String message_oriented_middleware;
+    public String open_service_of_port;
+    public String os_info;
+    public String patch_properties;
+    public String program_info;
+    public String system_fingerprint_info;
+    public String label_id;
+    public String label_type1;
+    public String label_type2;
+
+    public AssetScanTask() {
+    }
 }

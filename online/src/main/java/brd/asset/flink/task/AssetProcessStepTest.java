@@ -1,21 +1,22 @@
 package brd.asset.flink.task;
 
-import brd.asset.constants.AlarmItem;
 import brd.asset.constants.ScanCollectConstant;
 import brd.asset.entity.AssetBase;
 import brd.asset.entity.AssetScanTask;
-import brd.asset.flink.fun.*;
-import brd.asset.flink.sink.AssetScanOriginSink;
-import brd.asset.flink.sink.DorisSinkBase;
+import brd.asset.flink.fun.AbnormalAndLabelProcess;
+import brd.asset.flink.fun.LabeledMap;
+import brd.asset.flink.fun.Origin2AssetScan;
+import brd.asset.flink.fun.TaskEnd2DorisProcess;
+import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.source.AssetBaseSource;
 import brd.common.FlinkUtils;
+import brd.common.StringUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -25,6 +26,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
+import org.apache.log4j.Logger;
 
 import java.util.Properties;
 
@@ -36,6 +38,8 @@ import java.util.Properties;
  * @create: 2022/09/06 17:18
  */
 public class AssetProcessStepTest {
+    private static Logger log = Logger.getLogger(AssetProcessStepTest.class);
+
     public static void main(String[] args) throws Exception {
 
         String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
@@ -48,6 +52,7 @@ public class AssetProcessStepTest {
         //doris properties
         String dorisHost = paramFromProps.get("dorisHost");
         String dorisPort = paramFromProps.get("dorisPort");
+        String dorisPort1 = paramFromProps.get("dorisPort1");
         String dorisUser = paramFromProps.get("dorisUser");
         String dorisPw = paramFromProps.get("dorisPw");
         String dorisDB = paramFromProps.get("dorisDB");
@@ -64,10 +69,12 @@ public class AssetProcessStepTest {
         String processBlackList = paramFromProps.get("processBlackList");
 
         final StreamExecutionEnvironment env = FlinkUtils.getEnv();
+        env.setParallelism(1);
+        env.enableCheckpointing(10000L);
 
         //step1: 读取资产基础表
         DataStreamSource<AssetBase> assetBaseDS = env.addSource(new AssetBaseSource(dorisHost, dorisPort, dorisDB, assetBaseTB, dorisUser, dorisPw));
-        assetBaseDS.print("base: ");
+        //assetBaseDS.print("base: ");
 
         //step2: 读取原始数据&&过滤任务结束标志数据
         DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
@@ -79,24 +86,33 @@ public class AssetProcessStepTest {
         SingleOutputStreamOperator<JSONObject> signedDS = socketTextStream.process(new ProcessFunction<String, JSONObject>() {
             @Override
             public void processElement(String value, Context ctx, Collector<JSONObject> out) throws Exception {
-                JSONObject originObject = JSON.parseObject(value);
-                //resource info
-                JSONObject resourceObj = JSON.parseObject(originObject.get(ScanCollectConstant.RESOURCE_INFO).toString());
-                if (resourceObj.size() == 0) {
-                    ctx.output(taskEndTag, originObject);
-                } else {
-                    out.collect(originObject);
+                boolean isjson = StringUtils.isjson(value);
+                if (isjson) {
+                    JSONObject originObject = JSON.parseObject(value);
+                    //resource info
+                    try {
+                        JSONObject resourceObj = JSON.parseObject(originObject.get(ScanCollectConstant.RESOURCE_INFO).toString());
+                        if (resourceObj.size() == 0) {
+                            ctx.output(taskEndTag, originObject);
+                        } else {
+                            out.collect(originObject);
+                        }
+                    } catch (Exception e) {
+                        log.error("输入内容有误，mas=" + e.getMessage());
+                    }
+
                 }
             }
         });
         DataStream<String> taskEndStream = signedDS.getSideOutput(taskEndTag).map(x -> x.getString(ScanCollectConstant.TASK_ID));
         //修改任务状态
         Properties properties = new Properties();
-        properties.setProperty("url", "jdbc:mysql://" + dorisHost + ":" + dorisPort);
+        properties.setProperty("url", "jdbc:mysql://" + dorisHost + ":" + dorisPort + "?useSSL=false");
         properties.setProperty("username", dorisUser);
         properties.setProperty("password", dorisPw);
         properties.setProperty("db", dorisDB);
         properties.setProperty("table", assetTaskTB);
+        taskEndStream.print("task-end: ");
 
         taskEndStream.process(new TaskEnd2DorisProcess(properties));
 
@@ -117,24 +133,43 @@ public class AssetProcessStepTest {
         labeledAssetStream.print("labeled data: ");
         Properties labeledProp = new Properties();
         labeledProp.setProperty("host", dorisHost);
-        labeledProp.setProperty("port", dorisPort);
+        labeledProp.setProperty("port", dorisPort1);
         labeledProp.setProperty("username", dorisUser);
         labeledProp.setProperty("password", dorisPw);
         labeledProp.setProperty("db", dorisDB);
         labeledProp.setProperty("table", assetTaskOriginTB);
-        labeledProp.setProperty("batchSize", batchSize.toString());
-        AssetScanOriginSink assetScanOriginSink = new AssetScanOriginSink(env, labeledAssetStream, labeledProp);
+        labeledProp.setProperty("labelPrefix", "origin-5");
+
+        AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp);
         assetScanOriginSink.sink();
 
         //step6: 宽表和asset_base表关联并分流：异常资产&&更新asset_base表
-        labeledAssetStream.connect(assetBaseBroadcastDS)
+        SingleOutputStreamOperator<String> abnormalAnalysisDS = labeledAssetStream.connect(assetBaseBroadcastDS)
                 .process(new AbnormalAndLabelProcess(assetBaseMapStateDescriptor, openPortThreshold, processBlackList));
+
+        //step7: 资产入库（insert or update）
+        OutputTag<AssetScanTask> insertTag = new OutputTag<AssetScanTask>("asset-base-insert") {};
+        OutputTag<AssetScanTask> updateTag = new OutputTag<AssetScanTask>("asset-base-update") {};
+        DataStream<AssetScanTask> insertAssetBaseDs = abnormalAnalysisDS.getSideOutput(insertTag);
+        insertAssetBaseDs.print("insert asset base: ");
+        DataStream<AssetScanTask> updateAssetBaseDs = abnormalAnalysisDS.getSideOutput(updateTag);
+        updateAssetBaseDs.print("update asset base: ");
+        Properties assetbaseProp = new Properties();
+        assetbaseProp.setProperty("host", dorisHost);
+        assetbaseProp.setProperty("port", dorisPort1);
+        assetbaseProp.setProperty("username", dorisUser);
+        assetbaseProp.setProperty("password", dorisPw);
+        assetbaseProp.setProperty("db", dorisDB);
+        assetbaseProp.setProperty("table", assetTaskOriginTB);
+        assetbaseProp.setProperty("labelPrefix", "base-1");
+        AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseDs, assetbaseProp);
+        assetBaseSink.sink();
+
         //异常资产告警入库
         //abnormalAndLabeledDS.addSink(AbnormalAssetSink.getSink()); //todo 入库告警表
 
 
         env.execute("step test.");
-
     }
 
 }

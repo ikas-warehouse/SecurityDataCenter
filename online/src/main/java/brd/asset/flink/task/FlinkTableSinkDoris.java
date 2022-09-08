@@ -1,14 +1,11 @@
 package brd.asset.flink.task;
 
-import brd.asset.pojo.test.P01;
-import org.apache.flink.api.common.functions.MapFunction;
+import brd.asset.pojo.test.Test1;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-
-import java.util.ArrayList;
 
 /**
  * @program SecurityDataCenter
@@ -62,6 +59,9 @@ public class FlinkTableSinkDoris {
 
         env.execute("test table api");*/
 
+        /**
+         * 对象属性和doris表字段相对应，可以方便写入doris表
+         */
         tEnv.executeSql(
                 "CREATE TABLE testUnique (" +
                         "id INT,\n" +
@@ -78,9 +78,14 @@ public class FlinkTableSinkDoris {
                         "  'password' = '000000'\n" +
                         ")");
 
-        DataStreamSource<Integer> source = env.fromElements(1, 2, 3, 4);
 
-        tEnv.executeSql("insert into testUnique values(1,555,444,555)" );
+        DataStreamSource<Test1> source1 = env.fromElements(new Test1(2, 222,222,222), new Test1(3, 222,222,222), new Test1(4, 222,222,222));
+
+        Table table = tEnv.fromDataStream(source1);
+        table.printSchema();
+        tEnv.executeSql("insert into testUnique select * from " + table);
 
     }
 }
+
+

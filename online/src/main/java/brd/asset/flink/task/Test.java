@@ -1,5 +1,7 @@
 package brd.asset.flink.task;
 
+import java.util.ArrayList;
+
 /**
  * @program SecurityDataCenter
  * @description: test
@@ -8,6 +10,10 @@ package brd.asset.flink.task;
  */
 public class Test {
     public static void main(String[] args) {
-        System.out.println(System.currentTimeMillis());
+        ArrayList<String> list = new ArrayList<>();
+        list.add("11");
+        list.add("12");
+        list.add("13");
+        list.add("14");
     }
 }

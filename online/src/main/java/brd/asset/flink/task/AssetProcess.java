@@ -1,15 +1,11 @@
 package brd.asset.flink.task;
 
-import brd.asset.constants.AlarmItem;
 import brd.asset.constants.ScanCollectConstant;
 import brd.asset.entity.AssetBase;
 import brd.asset.entity.AssetScanTask;
-import brd.asset.flink.fun.AbnormalAndLabelProcess;
-import brd.asset.flink.fun.Entity2JsonMap;
 import brd.asset.flink.fun.LabeledMap;
 import brd.asset.flink.fun.Origin2AssetScan;
-import brd.asset.flink.sink.AssetScanOriginSink;
-import brd.asset.flink.sink.DorisSinkBase;
+import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.source.AssetBaseSource;
 import brd.asset.pojo.AssetScanOrigin;
 import brd.common.FlinkUtils;
@@ -20,7 +16,6 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -138,7 +133,7 @@ public class AssetProcess {
         labeledProp.setProperty("db", dorisDB);
         labeledProp.setProperty("table", assetTaskOriginTB);
         labeledProp.setProperty("batchSize", batchSize.toString());
-        AssetScanOriginSink assetScanOriginSink = new AssetScanOriginSink(env, labeledAssetStream, labeledProp);
+        AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp);
         assetScanOriginSink.sink();
 
         //宽表和asset_base表关联并分流：异常资产&&更新asset_base表

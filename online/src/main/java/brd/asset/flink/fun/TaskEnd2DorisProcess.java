@@ -51,8 +51,10 @@ public class TaskEnd2DorisProcess extends ProcessFunction<String, String> {
             ps = connection.prepareStatement(sql);
             ps.execute();
             logger.info("task_id: " + taskId + "执行完成！");
+            System.out.println("task_id: " + taskId + "执行完成！");
         } catch (Exception e) {
             logger.error("更新任务结束状态异常，msg=" + e.getMessage());
+            System.out.println("更新任务结束状态异常，msg=" + e.getMessage());
         }
     }
 }
