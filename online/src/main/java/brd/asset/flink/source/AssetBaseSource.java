@@ -127,7 +127,7 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
 
     @Override
     public void cancel() {
-
+        isRunning = false;
     }
 
 }

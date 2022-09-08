@@ -7,6 +7,7 @@ import org.apache.doris.flink.cfg.DorisReadOptions;
 import org.apache.doris.flink.sink.DorisSink;
 import org.apache.doris.flink.sink.writer.SimpleStringSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
@@ -14,7 +15,10 @@ import java.util.Properties;
 
 /**
  * @program SecurityDataCenter
- * @description: 资产原始数据入库
+ * @description:  通用的DataStream sink doris
+ * 需要注意几点
+ * 1、数据的字段和doris表字段要对应上，否则不能正常sink
+ * 2、labelPrefix需要配置不同，短期联调需要更改该值
  * @author: 蒋青松
  * @create: 2022/09/06 18:19
  */
@@ -43,7 +47,7 @@ public class AssetDataCommonSink<T> {
 
     public void sink() {
 
-        //方法1：flink sql
+        //方法1：flink sql -- 不稳定，有问题待复查
 
         /*Configuration configuration = tEnv.getConfig().getConfiguration();
         configuration.setString("table.exec.mini-batch.enabled", "true");
@@ -109,8 +113,9 @@ public class AssetDataCommonSink<T> {
                 .setSerializer(new SimpleStringSerializer())
                 .setDorisOptions(dorisBuilder.build());
 
+        SingleOutputStreamOperator<String> jsonDS = data.map(x -> JSONObject.toJSONString(x));
 
-        data.map(x -> JSONObject.toJSONString(x)).sinkTo(builder.build());
+        jsonDS.sinkTo(builder.build());
 
 
     }

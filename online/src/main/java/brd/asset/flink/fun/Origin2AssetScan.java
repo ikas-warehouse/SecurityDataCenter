@@ -74,51 +74,20 @@ public class Origin2AssetScan extends RichMapFunction<JSONObject, AssetScanTask>
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
                 }
-                /**
-                 * asset_id varchar(255) COMMENT 'ip+mac确定资产唯一',
-                 *      *     task_id varchar(255) COMMENT '任务ID',
-                 *      *     scan_time datetime COMMENT '扫描时间',
-                 *      *     device_name varchar(64) COMMENT '资产名称',````````
-                 *      *     device_ip varchar(64) COMMENT '资产IP',
-                 *      *     device_ip_ownership varchar(255) DEFAULT "" COMMENT 'ip归属地',
-                 *      *     device_mac varchar(256) COMMENT '资产MAC地址',
-                 *      *     device_type varchar(64) COMMENT '资产类型，ID与label表关联',````````
-                 *      *     data_base_info varchar(65532) COMMENT '数据库信息',
-                 *      *     kernel_version varchar(255) COMMENT '内核版本号',
-                 *      *     message_oriented_middleware varchar(65532) COMMENT '消息中间件',
-                 *      *     open_service_of_port varchar(65532) COMMENT '服务信息及端口号',
-                 *      *     os_info varchar(65532) COMMENT '操作系统信息',
-                 *      *     patch_properties varchar(65532) COMMENT '补丁属性',
-                 *      *     program_info varchar(65532) COMMENT '进程信息',
-                 *      *     system_fingerprint_info varchar(65532) COMMENT '系统指纹信息',
-                 *      *     label_id varchar(255) DEFAULT "" COMMENT '标签ID',
-                 *      *     label_type1 varchar(255) DEFAULT "" COMMENT'一级标签',```````
-                 *      *     label_type2 varchar(255) DEFAULT "" COMMENT'二级标签'````````
-                 */
                 AssetScanTask scanTask = new AssetScanTask();
                 scanTask.setAsset_id(deviceIpAddress + "_" + deviceMac);
                 scanTask.setTask_id(taskId);
                 scanTask.setScan_time(scanTime);
                 scanTask.setDevice_ip(deviceIpAddress);
-                scanTask.setDevice_ip_ownership(province);
+                scanTask.setDevice_ip_ownership(ipAddressOwnership);
                 scanTask.setDevice_mac(deviceMac);
+                scanTask.setDevice_type(deviceType);
+                scanTask.setSystem_fingerprint_info(systemFingerprintInfo);
                 scanTask.setData_base_info(dataBaseInfoJson);
                 scanTask.setMessage_oriented_middleware(messageOrientedMiddlewareJson);
                 scanTask.setOpen_service_of_port(openServiceOfPortJson);
                 scanTask.setOs_info(osInfo);
 
-/*
-                AssetScanOrigin scan = new AssetScanOrigin();
-                scan.setTaskID(taskId);
-                scan.setScanTime(scanTime);
-                scan.setDeviceIPAddress(deviceIpAddress);
-                scan.setiPAddressOwnership("".equals(province) ? "中国" : province);
-                scan.setDeviceType(deviceType);
-                scan.setoSInfo(osInfo);
-                scan.setSystemFingerprintInfo(systemFingerprintInfo);
-                scan.setOpenServiceOfPort(openServiceOfPorts);
-                scan.setMessageOrientedMiddleware(messageOrientedMiddlewares);
-                scan.setDataBaseInfos(dataBaseInfos);*/
                 return scanTask;
             }
         } catch (Exception e) {

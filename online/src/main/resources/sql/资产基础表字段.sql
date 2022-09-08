@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS asset_base(
+    device_ip varchar(64) COMMENT '资产IP',
+    device_mac varchar(256) COMMENT '资产MAC地址',
     asset_id varchar(255) COMMENT 'ip+mac',
     device_name varchar(64) COMMENT '资产名称',
-    device_ip varchar(64) COMMENT '资产IP',
     device_ip_ownership varchar(255) DEFAULT "" COMMENT 'ip归属地',
-    device_mac varchar(256) COMMENT '资产MAC地址',
     device_type varchar(64) COMMENT '资产类型，ID与label表关联',
     physical_address varchar(64) COMMENT '',
     machine_room varchar(64) COMMENT '机房',
@@ -38,4 +38,5 @@ CREATE TABLE IF NOT EXISTS asset_base(
     label_type2 varchar(255) DEFAULT "" COMMENT'二级标签',
     update_time varchar(64) COMMENT '更新时间'
 )
+UNIQUE KEY(`device_ip`, `device_mac`)
 DISTRIBUTED BY HASH(device_ip,device_mac) BUCKETS 8;

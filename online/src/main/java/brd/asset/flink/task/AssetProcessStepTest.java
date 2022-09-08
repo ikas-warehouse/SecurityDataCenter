@@ -3,14 +3,12 @@ package brd.asset.flink.task;
 import brd.asset.constants.ScanCollectConstant;
 import brd.asset.entity.AssetBase;
 import brd.asset.entity.AssetScanTask;
-import brd.asset.flink.fun.AbnormalAndLabelProcess;
-import brd.asset.flink.fun.LabeledMap;
-import brd.asset.flink.fun.Origin2AssetScan;
-import brd.asset.flink.fun.TaskEnd2DorisProcess;
+import brd.asset.flink.fun.*;
 import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.source.AssetBaseSource;
 import brd.common.FlinkUtils;
 import brd.common.StringUtils;
+import brd.common.TimeUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.state.MapStateDescriptor;
@@ -125,7 +123,6 @@ public class AssetProcessStepTest {
 
         //step4: json转AssetScan对象
         SingleOutputStreamOperator<AssetScanTask> assetOriginStream = signedDS.map(new Origin2AssetScan(ipDbPath));
-        assetOriginStream.print("json转AssetScan: ");
 
         //step5: 拉宽原始数据入库
         SingleOutputStreamOperator<AssetScanTask> labeledAssetStream = assetOriginStream.map(new LabeledMap(dorisHost,
@@ -138,7 +135,7 @@ public class AssetProcessStepTest {
         labeledProp.setProperty("password", dorisPw);
         labeledProp.setProperty("db", dorisDB);
         labeledProp.setProperty("table", assetTaskOriginTB);
-        labeledProp.setProperty("labelPrefix", "origin-5");
+        labeledProp.setProperty("labelPrefix", "task-origin-" + System.currentTimeMillis());
 
         AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp);
         assetScanOriginSink.sink();
@@ -148,26 +145,41 @@ public class AssetProcessStepTest {
                 .process(new AbnormalAndLabelProcess(assetBaseMapStateDescriptor, openPortThreshold, processBlackList));
 
         //step7: 资产入库（insert or update）
-        OutputTag<AssetScanTask> insertTag = new OutputTag<AssetScanTask>("asset-base-insert") {};
-        OutputTag<AssetScanTask> updateTag = new OutputTag<AssetScanTask>("asset-base-update") {};
+        final OutputTag<AssetScanTask> insertTag = new OutputTag<AssetScanTask>("asset-base-insert") {
+        };
+        final OutputTag<AssetScanTask> updateTag = new OutputTag<AssetScanTask>("asset-base-update") {
+        };
+
+        //AssetScanTask 转成 AssetBase类型
         DataStream<AssetScanTask> insertAssetBaseDs = abnormalAnalysisDS.getSideOutput(insertTag);
         insertAssetBaseDs.print("insert asset base: ");
         DataStream<AssetScanTask> updateAssetBaseDs = abnormalAnalysisDS.getSideOutput(updateTag);
         updateAssetBaseDs.print("update asset base: ");
+
+        //插入资产基础表
         Properties assetbaseProp = new Properties();
         assetbaseProp.setProperty("host", dorisHost);
         assetbaseProp.setProperty("port", dorisPort1);
         assetbaseProp.setProperty("username", dorisUser);
         assetbaseProp.setProperty("password", dorisPw);
         assetbaseProp.setProperty("db", dorisDB);
-        assetbaseProp.setProperty("table", assetTaskOriginTB);
-        assetbaseProp.setProperty("labelPrefix", "base-1");
-        AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseDs, assetbaseProp);
+        assetbaseProp.setProperty("table", assetBaseTB);
+        assetbaseProp.setProperty("labelPrefix", "asset-base-" + System.currentTimeMillis());
+        SingleOutputStreamOperator<AssetBase> insertAssetBaseFinalDS = insertAssetBaseDs.map(new AssetScanTask2AssetBaseMap());
+        insertAssetBaseFinalDS.print("insert final");
+        AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseFinalDS, assetbaseProp);
         assetBaseSink.sink();
 
-        //异常资产告警入库
-        //abnormalAndLabeledDS.addSink(AbnormalAssetSink.getSink()); //todo 入库告警表
+        //修改资产基础表
+        Properties assetUpdateProp = new Properties();
+        assetUpdateProp.setProperty("url", "jdbc:mysql://" + dorisHost + ":" + dorisPort + "?useSSL=false");
+        assetUpdateProp.setProperty("username", dorisUser);
+        assetUpdateProp.setProperty("password", dorisPw);
+        assetUpdateProp.setProperty("db", dorisDB);
+        assetUpdateProp.setProperty("table", assetBaseTB);
+        updateAssetBaseDs.map(new AssetScanTask2AssetBaseMap()).process(new AssetbaseUpdate2DorisProcess(assetUpdateProp));
 
+        //step8: 异常资产告警入库
 
         env.execute("step test.");
     }

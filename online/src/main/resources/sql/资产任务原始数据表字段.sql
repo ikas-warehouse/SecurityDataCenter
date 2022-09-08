@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS sdc.asset_task_origin(
 )PARTITION BY RANGE(scan_time)()
 DISTRIBUTED BY HASH(device_ip)
 properties(
-              "dynamic_partition.enable" = "true",
-              "dynamic_partition.time_unit" = "DAY",
-              "dynamic_partition.create_history_partition" = "true",
-              "dynamic_partition.start" = "-30",
-              "dynamic_partition.end" = "2",
-              "dynamic_partition.prefix" = "p",
-              "dynamic_partition.buckets" = "8"
-          );
+  "dynamic_partition.enable" = "true",
+  "dynamic_partition.time_unit" = "DAY",
+  "dynamic_partition.create_history_partition" = "true",
+  "dynamic_partition.start" = "-30",
+  "dynamic_partition.end" = "2",
+  "dynamic_partition.prefix" = "p",
+  "dynamic_partition.buckets" = "8"
+);

@@ -31,6 +31,7 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
 
     private MapStateDescriptor<String, AssetBase> assetBaseMapStateDescriptor;
 
+    private static final String UNIQUE_CONNECT_STR = "_";
 
     private int openPortThreshold;
     private List<String> processBlackList;
@@ -59,8 +60,9 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
         assetBaseBroadcastState.immutableEntries().iterator().forEachRemaining(i -> {
             String ip = i.getValue().getDevice_ip();
             String mac = i.getValue().getDevice_mac();
+            String unique = ip + UNIQUE_CONNECT_STR + mac;
             AssetBase assetBase = i.getValue();
-            unique2baseMap.put(ip, assetBase);
+            unique2baseMap.put(unique, assetBase);
             //accessAssets.add(ip);
         });
         getAccessAssets();
@@ -69,7 +71,7 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
         Set<String> assets = unique2baseMap.keySet();
         String ip = asset.getDevice_ip();
         String mac = asset.getDevice_mac();
-        String assetUnique = ip + ":" + mac;
+        String assetUnique = ip + UNIQUE_CONNECT_STR + mac;
         // 资产基础表新增或更新数据输出
         if (assets.contains(assetUnique)) {//ip+mac作为资产唯一性
             //更新
@@ -116,7 +118,7 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
     @Override
     public void processBroadcastElement(AssetBase value, Context ctx, Collector<String> out) throws Exception {
         BroadcastState<String, AssetBase> assetBaseBroadcastState = ctx.getBroadcastState(assetBaseMapStateDescriptor);
-        assetBaseBroadcastState.put(value.getDevice_ip() + "_" + value.getDevice_mac(), value);
+        assetBaseBroadcastState.put(value.getDevice_ip() + UNIQUE_CONNECT_STR + value.getDevice_mac(), value);
     }
 
     /**
