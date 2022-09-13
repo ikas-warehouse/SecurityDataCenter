@@ -9,11 +9,15 @@ import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.source.AssetBaseSource;
 import brd.common.FlinkUtils;
 import com.alibaba.fastjson.JSONObject;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -41,6 +45,7 @@ public class AssetProcessByStep {
         //获取配置数据
         ParameterTool paramFromProps = ParameterTool.fromPropertiesFile(propPath);
         String taskName = paramFromProps.get("task.name");
+        String brokers = paramFromProps.get("consumer.bootstrap.server");
         String consumerTopic = paramFromProps.get("consumer.topic");
         String groupId = paramFromProps.get("consumer.groupId");
         Long timeout = paramFromProps.getLong("timeout");
@@ -70,12 +75,20 @@ public class AssetProcessByStep {
         //assetBaseDS.print("base: ");
 
         //step2: 读取原始数据&&过滤任务结束标志数据
-        DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
+        //kafka-source
+        KafkaSource<String> source = KafkaSource.<String>builder()
+                .setBootstrapServers(brokers)
+                .setTopics(consumerTopic)
+                .setGroupId(groupId)
+                .setStartingOffsets(OffsetsInitializer.latest())
+                .setValueOnlyDeserializer(new SimpleStringSchema())
+                .build();
+        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source");
 
         final OutputTag<JSONObject> taskEndTag = new OutputTag<JSONObject>("task-end") {
         };
         //过滤任务结束标志数据
-        SingleOutputStreamOperator<JSONObject> signedDS = socketTextStream.process(new FilterTaskEndProcess());
+        SingleOutputStreamOperator<JSONObject> signedDS = kafkaSource.process(new FilterTaskEndProcess());
         DataStream<String> taskEndStream = signedDS.getSideOutput(taskEndTag).map(x -> x.getString(ScanCollectConstant.TASK_ID));
         //修改任务状态
         Properties properties = new Properties();
