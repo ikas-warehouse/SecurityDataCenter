@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
  * @Date: 2022/3/25 10:54 上午
  */
 public class FlinkUtils {
-
     private static final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
     public static StreamExecutionEnvironment getEnv(){
         env.enableCheckpointing(1 * 60 * 1000);

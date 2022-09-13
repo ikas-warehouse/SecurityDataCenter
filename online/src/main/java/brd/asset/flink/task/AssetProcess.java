@@ -11,12 +11,16 @@ import brd.asset.pojo.AssetScanOrigin;
 import brd.common.FlinkUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -55,6 +59,7 @@ public class AssetProcess {
         //获取配置数据
         ParameterTool paramFromProps = ParameterTool.fromPropertiesFile(propPath);
         String taskName = paramFromProps.get("task.name");
+        String brokers = paramFromProps.get("consumer.bootstrap.server");
         String consumerTopic = paramFromProps.get("consumer.topic");
         String groupId = paramFromProps.get("consumer.groupId");
         Long timeout = paramFromProps.getLong("timeout");
@@ -80,15 +85,20 @@ public class AssetProcess {
         final StreamExecutionEnvironment env = FlinkUtils.getEnv();
         //将 ParameterTool 注册为全作业参数的参数
         env.getConfig().setGlobalJobParameters(ParameterTool.fromArgs(args));
-        //用socket测试
-        //todo socket 改 kafka
-        DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);
-        socketTextStream.print();
+        //kafka-source
+        KafkaSource<String> source = KafkaSource.<String>builder()
+                .setBootstrapServers(brokers)
+                .setTopics(consumerTopic)
+                .setGroupId(groupId)
+                .setStartingOffsets(OffsetsInitializer.latest())
+                .setValueOnlyDeserializer(new SimpleStringSchema())
+                .build();
+        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source");
 
         final OutputTag<JSONObject> taskEndTag = new OutputTag<JSONObject>("task-end") {
         };
         //过滤任务结束标志数据
-        SingleOutputStreamOperator<JSONObject> signedDS = socketTextStream.process(new ProcessFunction<String, JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> signedDS = kafkaSource.process(new ProcessFunction<String, JSONObject>() {
             @Override
             public void processElement(String value, Context ctx, Collector<JSONObject> out) throws Exception {
                 JSONObject originObject = JSON.parseObject(value);

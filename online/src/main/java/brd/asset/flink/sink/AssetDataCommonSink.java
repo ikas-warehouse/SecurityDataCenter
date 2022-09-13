@@ -17,7 +17,7 @@ import java.util.Properties;
  * @program SecurityDataCenter
  * @description:  通用的DataStream sink doris
  * 需要注意几点
- * 1、数据的字段和doris表字段要对应上，否则不能正常sink
+ * 1、数据的字段和doris表字段要对应上，否则不能正常sink！！！datetime可以用string对应
  * 2、labelPrefix需要配置不同，短期联调需要更改该值
  * @author: 蒋青松
  * @create: 2022/09/06 18:19
@@ -115,6 +115,7 @@ public class AssetDataCommonSink<T> {
 
         SingleOutputStreamOperator<String> jsonDS = data.map(x -> JSONObject.toJSONString(x));
 
+        jsonDS.print(tb);
         jsonDS.sinkTo(builder.build());
 
 

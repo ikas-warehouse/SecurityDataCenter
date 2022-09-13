@@ -3,7 +3,9 @@ package brd.asset.flink.fun;
 import brd.asset.constants.AlarmItem;
 import brd.asset.entity.AssetBase;
 import brd.asset.entity.AssetScanTask;
+import brd.asset.entity.EventAlarm;
 import brd.asset.pojo.OpenServiceOfPort;
+import brd.common.TimeUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import org.apache.flink.api.common.state.BroadcastState;
@@ -22,7 +24,7 @@ import java.util.*;
  * 2、资产基础表更新数据侧输出
  * @Date: 2022/4/1 11:00 上午
  */
-public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanTask, AssetBase, String> {
+public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanTask, AssetBase, EventAlarm> {
 
     //纳管资产
     private Set<String> accessAssets = new HashSet<>();
@@ -47,7 +49,7 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
     }
 
     @Override
-    public void processElement(AssetScanTask asset, ReadOnlyContext ctx, Collector<String> out) throws Exception {
+    public void processElement(AssetScanTask asset, ReadOnlyContext ctx, Collector<EventAlarm> out) throws Exception {
 
         OutputTag<AssetScanTask> insertTag = new OutputTag<AssetScanTask>("asset-base-insert") {
         };
@@ -85,14 +87,31 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
         //1.异常开放端口
         List<OpenServiceOfPort> openServiceOfPorts = JSON.parseArray(asset.getOpen_service_of_port(), OpenServiceOfPort.class);
         if (openServiceOfPorts.size() > openPortThreshold) {
-            //out.collect(Tuple3.of(asset.getTask_id(), ip, AlarmItem.ABNORMAL_OPEN_PORT));
+            EventAlarm alarm = new EventAlarm();
+            alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
+            alarm.setEvent_title(AlarmItem.ABNORMAL_OPEN_PORT.getEventDesc());
+            alarm.setEvent_type(AlarmItem.ABNORMAL_OPEN_PORT.getEventId());
+            alarm.setEvent_level("中");
+            alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
+            alarm.setEvent_dev_ip(ip);
+            alarm.setEvent_dev_mac(mac);
+            out.collect(alarm);
+
         }
         //2.异常资产信息变更(对同一台资产os info，与上一次资产采集的信息对比)
         if (assets.contains(assetUnique)) {
             AssetBase assetBase = unique2baseMap.get(assetUnique);
             String osInfo = assetBase.getOs_info();
             if (osInfo != null && !osInfo.equals(asset.getOs_info())) {
-                //out.collect(Tuple3.of(asset.getTaskID(), ip, AlarmItem.ABNORMAL_ASSET_CHANGE));
+                EventAlarm alarm = new EventAlarm();
+                alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
+                alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_CHANGE.getEventDesc());
+                alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_CHANGE.getEventId());
+                alarm.setEvent_level("中");
+                alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
+                alarm.setEvent_dev_ip(ip);
+                alarm.setEvent_dev_mac(mac);
+                out.collect(alarm);
             }
         }
 
@@ -102,21 +121,45 @@ public class AbnormalAndLabelProcess extends BroadcastProcessFunction<AssetScanT
             String attributionGroup = lastAsset.getResponsible_group();
             String responsiblePerson = lastAsset.getResponsible_person();
             if (attributionGroup == null || "".equals(attributionGroup) || responsiblePerson == null || "".equals(responsiblePerson)) {
-                //out.collect(Tuple3.of(asset.getTask_id(), ip, AlarmItem.ABNORMAL_ASSET_NO_GROUP));
+                EventAlarm alarm = new EventAlarm();
+                alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
+                alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_NO_GROUP.getEventDesc());
+                alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_NO_GROUP.getEventId());
+                alarm.setEvent_level("中");
+                alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
+                alarm.setEvent_dev_ip(ip);
+                alarm.setEvent_dev_mac(mac);
+                out.collect(alarm);
             }
         }
         //5.发现未知资产
         if (!accessAssets.contains(assetUnique)) {
-            //out.collect(Tuple3.of(asset.getTaskID(), ip, AlarmItem.ABNORMAL_ASSET_UNKNOWN));
+            EventAlarm alarm = new EventAlarm();
+            alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
+            alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_UNKNOWN.getEventDesc());
+            alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_UNKNOWN.getEventId());
+            alarm.setEvent_level("中");
+            alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
+            alarm.setEvent_dev_ip(ip);
+            alarm.setEvent_dev_mac(mac);
+            out.collect(alarm);
         }
         //6.异常进程信息
         if (processBlackList.contains(ip)) {
-            //out.collect(Tuple3.of(asset.getTaskID(), ip, AlarmItem.ABNORMAL_PROESS));
+            EventAlarm alarm = new EventAlarm();
+            alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
+            alarm.setEvent_title(AlarmItem.ABNORMAL_PROESS.getEventDesc());
+            alarm.setEvent_type(AlarmItem.ABNORMAL_PROESS.getEventId());
+            alarm.setEvent_level("中");
+            alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
+            alarm.setEvent_dev_ip(ip);
+            alarm.setEvent_dev_mac(mac);
+            out.collect(alarm);
         }
     }
 
     @Override
-    public void processBroadcastElement(AssetBase value, Context ctx, Collector<String> out) throws Exception {
+    public void processBroadcastElement(AssetBase value, Context ctx, Collector<EventAlarm> out) throws Exception {
         BroadcastState<String, AssetBase> assetBaseBroadcastState = ctx.getBroadcastState(assetBaseMapStateDescriptor);
         assetBaseBroadcastState.put(value.getDevice_ip() + UNIQUE_CONNECT_STR + value.getDevice_mac(), value);
     }

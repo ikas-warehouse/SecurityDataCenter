@@ -134,7 +134,6 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
             Set<Tuple3<Integer, String, String>> matchedLabels = matchLabel(labelInputInfo);
 
             if (matchedLabels.size() == 0) {
-                System.out.println("scan1: " + scan);
                 return scan;
             } else {
                 String separator = ",";
@@ -147,7 +146,6 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
                     type2List.add(label.f2);
                 }
                 scan.setLabel_id(StringUtils.join(labelIds, separator));
-                System.out.println("scan2: " + scan);
 
                 return scan;
             }

@@ -1,6 +1,5 @@
 package brd.asset.flink.task;
 
-import brd.asset.pojo.test.Test1;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;

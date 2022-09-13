@@ -86,10 +86,8 @@ public class AssetbaseUpdate2DorisProcess extends ProcessFunction<AssetBase, Str
             ps.setString(16, assetBase.getDevice_ip());
             ps.setString(17, assetBase.getDevice_mac());
             ps.execute();
-            System.out.println(assetBase.getAsset_id() + ": " + "更新完成！");
         } catch (Exception e) {
             logger.error("更新任务结束状态异常，msg=" + e.getMessage());
-            System.out.println("更新任务结束状态异常，msg=" + e.getMessage());
         }
     }
 }
