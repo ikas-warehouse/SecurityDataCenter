@@ -1,16 +1,10 @@
 package brd.asset.flink.fun;
 
 import brd.asset.entity.AssetScanTask;
-import brd.asset.pojo.AssetScanOrigin;
-import brd.asset.pojo.DataBaseInfoScan;
-import brd.asset.pojo.MessageOrientedMiddlewareScan;
-import brd.asset.pojo.OpenServiceOfPort;
 import brd.common.TimeUtils;
-import com.alibaba.fastjson.JSONObject;
 import com.mysql.jdbc.Driver;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.RichMapFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.configuration.Configuration;
 import org.apache.log4j.Logger;

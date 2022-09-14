@@ -4,6 +4,7 @@ import brd.asset.entity.AssetBase;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
+import org.apache.log4j.Logger;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.TimerTask;
  * @create: 2022/08/11 15:14
  */
 public class AssetBaseSource extends RichSourceFunction<AssetBase> {
+    private static Logger log = Logger.getLogger(AssetBaseSource.class);
     private boolean isRunning = true;
     private Timer timer;
 
@@ -30,6 +32,8 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
     private String USER;
     private String PASSWD;
     private List<AssetBase> data;
+    private Connection conn;
+    PreparedStatement stmt;
 
     /**
      * 参数由配置文件获取传入
@@ -69,7 +73,7 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
                         });
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.error(e.getMessage());
                 }
             }
         }, 1000, 1 * 10 * 60 * 1000);
@@ -109,17 +113,19 @@ public class AssetBaseSource extends RichSourceFunction<AssetBase> {
             return list;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         } finally {
             try {
                 if (stmt != null) stmt.close();
+                System.out.println("asset-base: 关闭stmt");
             } catch (SQLException se2) {
-                se2.printStackTrace();
+                log.error(se2.getMessage());
             }
             try {
                 if (conn != null) conn.close();
+                System.out.println("asset-base: 关闭conn");
             } catch (SQLException se) {
-                se.printStackTrace();
+                log.error(se.getMessage());
             }
         }
         return null;

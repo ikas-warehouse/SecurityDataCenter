@@ -115,7 +115,6 @@ public class AssetDataCommonSink<T> {
 
         SingleOutputStreamOperator<String> jsonDS = data.map(x -> JSONObject.toJSONString(x));
 
-        jsonDS.print(tb);
         jsonDS.sinkTo(builder.build());
 
 

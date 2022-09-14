@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Properties;
 
 /**
@@ -55,6 +56,20 @@ public class TaskEnd2DorisProcess extends ProcessFunction<String, String> {
         } catch (Exception e) {
             logger.error("更新任务结束状态异常，msg=" + e.getMessage());
             System.out.println("更新任务结束状态异常，msg=" + e.getMessage());
+        }
+    }
+
+    @Override
+    public void close() throws Exception {
+        try {
+            if (ps != null) ps.close();
+        } catch (SQLException se2) {
+            logger.error(se2.getMessage());
+        }
+        try {
+            if (connection != null) connection.close();
+        } catch (SQLException se) {
+            logger.error(se.getMessage());
         }
     }
 }

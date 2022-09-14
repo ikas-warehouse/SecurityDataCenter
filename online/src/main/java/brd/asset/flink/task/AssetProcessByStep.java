@@ -22,6 +22,7 @@ import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.OutputTag;
 import org.apache.log4j.Logger;
@@ -41,14 +42,16 @@ public class AssetProcessByStep {
 
     public static void main(String[] args) throws Exception {
 
-        String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
+        //String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
+        ParameterTool parameterTool = ParameterTool.fromArgs(args);
+        String propPath = parameterTool.get("conf_path");
         //获取配置数据
+        //------------------------------------获取配置数据 begin--------------------------------------
         ParameterTool paramFromProps = ParameterTool.fromPropertiesFile(propPath);
         String taskName = paramFromProps.get("task.name");
         String brokers = paramFromProps.get("consumer.bootstrap.server");
         String consumerTopic = paramFromProps.get("consumer.topic");
         String groupId = paramFromProps.get("consumer.groupId");
-        Long timeout = paramFromProps.getLong("timeout");
         //doris properties
         String dorisHost = paramFromProps.get("dorisHost");
         String dorisPort = paramFromProps.get("dorisPort");
@@ -60,21 +63,19 @@ public class AssetProcessByStep {
         String assetTaskTB = paramFromProps.get("dorisTable.assetTask");
         String eventAlarmTB = paramFromProps.get("dorisTable.eventAlarm");
         String assetTaskOriginTB = paramFromProps.get("dorisTable.assetTaskOrigin");
-        Integer batchSize = Integer.valueOf(paramFromProps.get("batchSize"));
-        Long batchIntervalMs = Long.valueOf(paramFromProps.get("batchIntervalMs"));
         //ip数据库地址
         String ipDbPath = paramFromProps.get("ipDbPath");
         Integer openPortThreshold = paramFromProps.getInt("openPortThreshold");
         String processBlackList = paramFromProps.get("processBlackList");
+        //------------------------------------获取配置数据 end--------------------------------------
 
-        final StreamExecutionEnvironment env = FlinkUtils.getEnv();
-        env.enableCheckpointing(5000L);
 
-        //step1: 读取资产基础表
-        DataStreamSource<AssetBase> assetBaseDS = env.addSource(new AssetBaseSource(dorisHost, dorisPort, dorisDB, assetBaseTB, dorisUser, dorisPw));
-        //assetBaseDS.print("base: ");
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.enableCheckpointing(10000);
+        CheckpointConfig checkpointConfig = env.getCheckpointConfig();
+        checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION);
 
-        //step2: 读取原始数据&&过滤任务结束标志数据
+        //step1: 读取原始数据&&过滤任务结束标志数据
         //kafka-source
         KafkaSource<String> source = KafkaSource.<String>builder()
                 .setBootstrapServers(brokers)
@@ -83,8 +84,9 @@ public class AssetProcessByStep {
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new SimpleStringSchema())
                 .build();
-        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source");
+        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source").setParallelism(8);
 
+        //DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
         final OutputTag<JSONObject> taskEndTag = new OutputTag<JSONObject>("task-end") {
         };
         //过滤任务结束标志数据
@@ -100,13 +102,6 @@ public class AssetProcessByStep {
         taskEndStream.print("task-end: ");
 
         taskEndStream.process(new TaskEnd2DorisProcess(properties));
-
-
-        //step3: 基础表数据广播
-        final MapStateDescriptor<String, AssetBase> assetBaseMapStateDescriptor = new MapStateDescriptor<>(
-                "assetBaseState", BasicTypeInfo.STRING_TYPE_INFO, TypeInformation.of(new TypeHint<AssetBase>() {
-        }));
-        BroadcastStream<AssetBase> assetBaseBroadcastDS = assetBaseDS.broadcast(assetBaseMapStateDescriptor);
 
         //step4: json转AssetScan对象
         SingleOutputStreamOperator<AssetScanTask> assetOriginStream = signedDS.map(new Origin2AssetScan(ipDbPath));
@@ -126,9 +121,10 @@ public class AssetProcessByStep {
         AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp);
         assetScanOriginSink.sink();
 
-        //step6: 宽表和asset_base表关联并分流：异常资产&&更新asset_base表
-        SingleOutputStreamOperator<EventAlarm> abnormalAnalysisDS = labeledAssetStream.connect(assetBaseBroadcastDS)
-                .process(new AbnormalAndLabelProcess(assetBaseMapStateDescriptor, openPortThreshold, processBlackList));
+        //step6:异常资产&&更新asset_base表
+        SingleOutputStreamOperator<EventAlarm> abnormalAnalysisDS = labeledAssetStream
+                .process(new AbnormalAndLabelProcess1(openPortThreshold, processBlackList, dorisHost, dorisPort, dorisDB, dorisUser, dorisPw));
+
 
         //step7: 资产入库（insert or update）
         final OutputTag<AssetScanTask> insertTag = new OutputTag<AssetScanTask>("asset-base-insert") {
@@ -163,7 +159,6 @@ public class AssetProcessByStep {
         updateAssetBaseDs.map(new AssetScanTask2AssetBaseMap()).process(new AssetbaseUpdate2DorisProcess(assetUpdateProp));
 
         //step8: 异常资产告警入库
-        abnormalAnalysisDS.print("abnormal ds:");
         Properties eventAlarmProp = new Properties();
         eventAlarmProp.setProperty("host", dorisHost);
         eventAlarmProp.setProperty("port", dorisPort1);
@@ -175,7 +170,7 @@ public class AssetProcessByStep {
         AssetDataCommonSink eventAlarmSink = new AssetDataCommonSink(env, abnormalAnalysisDS, eventAlarmProp);
         eventAlarmSink.sink();
 
-        env.execute("step test.");
+        env.execute("中移: asset task.");
     }
 
 }

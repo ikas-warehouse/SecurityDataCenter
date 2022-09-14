@@ -1,12 +1,6 @@
 package brd.asset.flink.sink;
 
-import org.apache.doris.flink.cfg.DorisExecutionOptions;
-import org.apache.doris.flink.cfg.DorisOptions;
-import org.apache.doris.flink.cfg.DorisReadOptions;
-import org.apache.doris.flink.sink.DorisSink;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-
-import java.util.Properties;
 
 /**
  * @program SecurityDataCenter
