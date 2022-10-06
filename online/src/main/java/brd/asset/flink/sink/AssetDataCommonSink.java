@@ -32,8 +32,9 @@ public class AssetDataCommonSink<T> {
     private String user;
     private String pw;
     private String labelPrefix;
+    private Integer parallelism;
 
-    public AssetDataCommonSink(StreamExecutionEnvironment env, DataStream<T> data, Properties properties) {
+    public AssetDataCommonSink(StreamExecutionEnvironment env, DataStream<T> data, Properties properties, Integer parallelism) {
         this.data = data;
         this.db = properties.getProperty("db");
         this.tb = properties.getProperty("table");
@@ -43,6 +44,7 @@ public class AssetDataCommonSink<T> {
         this.pw = properties.getProperty("password");
         this.labelPrefix = properties.getProperty("labelPrefix");
         this.tEnv = StreamTableEnvironment.create(env);
+        this.parallelism = parallelism;
     }
 
     public void sink() {
@@ -115,7 +117,7 @@ public class AssetDataCommonSink<T> {
 
         SingleOutputStreamOperator<String> jsonDS = data.map(x -> JSONObject.toJSONString(x));
 
-        jsonDS.sinkTo(builder.build());
+        jsonDS.sinkTo(builder.build()).name(tb).setParallelism(parallelism);
 
 
     }

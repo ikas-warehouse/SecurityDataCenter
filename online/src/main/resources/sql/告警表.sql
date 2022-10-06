@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS sdc.event_alarm(
+    event_id varchar(64) COMMENT '事件ID',
+    event_title varchar(64) COMMENT '事件title',
+    event_type varchar(64) COMMENT '事件类型，关联even_alarm_type',
+    event_level varchar(64) COMMENT '事件等级',
+    event_time varchar(64) COMMENT '事件发生时间',
+    event_count varchar(64) COMMENT '事件的个数',
+    event_dev_ip varchar(64) COMMENT '事件发生的设备IP',
+    event_dev_mac varchar(64) COMMENT '事件发生的设备MAC',
+    event_dev_type varchar(64) COMMENT '事件发生的设备类型',
+    event_device_factory varchar(64) COMMENT '事件发生的设备厂商',
+    event_device_model varchar(64) COMMENT '事件发生的设备型号',
+    event_device_name varchar(64) COMMENT '事件发生的设备名称',
+    event_source_ip varchar(64) COMMENT '事件源IP',
+    event_source_port varchar(64) COMMENT '事件源端口',
+    event_source_adress varchar(64) COMMENT '事件源IP归属地',
+    event_target_ip varchar(64) COMMENT '事件目的IP',
+    event_target_port varchar(64) COMMENT '事件目的端口',
+    event_target_adress varchar(64) COMMENT '事件目的IP归属地',
+    event_affected_dev varchar(255) COMMENT '受影响设备',
+    event_affected_dev_belong varchar(64) COMMENT '受影响设备所在地',
+    event_description varchar(64) COMMENT '事件描述',
+    trace_log_ids varchar(2048) COMMENT '原始日志ID',
+    protocol varchar(64) COMMENT '协议',
+    traffic_size double COMMENT '流量大小',
+    file_name varchar(64) COMMENT '文件名',
+    handle varchar (1) COMMENT '是否处置“0”未处置“1”已处置',
+    handle_time varchar(32) COMMENT '处置时间'
+    )
+    DISTRIBUTED BY HASH(event_dev_ip,event_dev_mac) BUCKETS 8;
+

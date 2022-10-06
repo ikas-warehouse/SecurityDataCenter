@@ -18,4 +18,4 @@ CREATE TABLE `assets_task` (
      `scan_type` varchar(255),
      `protocol_type` varchar(255),
      `alert_switch` int(1) DEFAULT '1' COMMENT '告警开关0关闭、1打开'
-) distributed by hash(task_id) BUCKETS 1;
+) UNIQUE KEY(`task_id`) distributed by hash(task_id) BUCKETS 1;

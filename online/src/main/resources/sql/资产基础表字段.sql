@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS asset_base(
     label_id varchar(255) DEFAULT "" COMMENT '标签ID',
     label_type1 varchar(255) DEFAULT "" COMMENT'一级标签',
     label_type2 varchar(255) DEFAULT "" COMMENT'二级标签',
-    update_time varchar(64) COMMENT '更新时间'
+    update_time varchar(64) COMMENT '更新时间',
+    threat_score double NULL DEFAULT "0.0" COMMENT "威胁分数值"
 )
 UNIQUE KEY(`device_ip`, `device_mac`)
 DISTRIBUTED BY HASH(device_ip,device_mac) BUCKETS 8;

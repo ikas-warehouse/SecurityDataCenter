@@ -6,19 +6,13 @@ import brd.asset.entity.AssetScanTask;
 import brd.asset.entity.EventAlarm;
 import brd.asset.flink.fun.*;
 import brd.asset.flink.sink.AssetDataCommonSink;
-import brd.asset.flink.source.AssetBaseSource;
-import brd.common.FlinkUtils;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.common.state.MapStateDescriptor;
-import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
-import org.apache.flink.streaming.api.datastream.BroadcastStream;
+import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -26,6 +20,7 @@ import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.OutputTag;
 import org.apache.log4j.Logger;
+
 import java.util.Properties;
 
 
@@ -42,11 +37,19 @@ public class AssetProcessByStep {
 
     public static void main(String[] args) throws Exception {
 
-        //String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
+        String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
         ParameterTool parameterTool = ParameterTool.fromArgs(args);
-        String propPath = parameterTool.get("conf_path");
+        /*String propPath = parameterTool.get("conf_path");
+        Integer commonParallelism = parameterTool.getInt("common_parallelism");
+        Integer kafkaParallelism = parameterTool.getInt("kafka_parallelism");
+        Integer dorisSinkParallelism = parameterTool.getInt("doris_sink_parallelism");*/
+
+        Integer commonParallelism = 5;
+        Integer kafkaParallelism = 1;
+        Integer dorisSinkParallelism = 2;
         //获取配置数据
         //------------------------------------获取配置数据 begin--------------------------------------
+        //todo 注册全局参数，不需要每次传参
         ParameterTool paramFromProps = ParameterTool.fromPropertiesFile(propPath);
         String taskName = paramFromProps.get("task.name");
         String brokers = paramFromProps.get("consumer.bootstrap.server");
@@ -71,7 +74,9 @@ public class AssetProcessByStep {
 
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.enableCheckpointing(10000);
+        env.setParallelism(commonParallelism);
+        env.enableCheckpointing(5000);
+        env.getCheckpointConfig().setCheckpointingMode(CheckpointingMode.AT_LEAST_ONCE);
         CheckpointConfig checkpointConfig = env.getCheckpointConfig();
         checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION);
 
@@ -84,7 +89,7 @@ public class AssetProcessByStep {
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new SimpleStringSchema())
                 .build();
-        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source").setParallelism(8);
+        DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source").setParallelism(kafkaParallelism);
 
         //DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
         final OutputTag<JSONObject> taskEndTag = new OutputTag<JSONObject>("task-end") {
@@ -118,7 +123,7 @@ public class AssetProcessByStep {
         labeledProp.setProperty("table", assetTaskOriginTB);
         labeledProp.setProperty("labelPrefix", "task-origin-" + System.currentTimeMillis());
 
-        AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp);
+        AssetDataCommonSink assetScanOriginSink = new AssetDataCommonSink(env, labeledAssetStream, labeledProp, dorisSinkParallelism);
         assetScanOriginSink.sink();
 
         //step6:异常资产&&更新asset_base表
@@ -146,7 +151,7 @@ public class AssetProcessByStep {
         assetbaseProp.setProperty("table", assetBaseTB);
         assetbaseProp.setProperty("labelPrefix", "asset-base-" + System.currentTimeMillis());
         SingleOutputStreamOperator<AssetBase> insertAssetBaseFinalDS = insertAssetBaseDs.map(new AssetScanTask2AssetBaseMap());
-        AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseFinalDS, assetbaseProp);
+        AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseFinalDS, assetbaseProp, dorisSinkParallelism);
         assetBaseSink.sink();
 
         //修改资产基础表
@@ -167,7 +172,7 @@ public class AssetProcessByStep {
         eventAlarmProp.setProperty("db", dorisDB);
         eventAlarmProp.setProperty("table", eventAlarmTB);
         eventAlarmProp.setProperty("labelPrefix", "event-alarm-" + System.currentTimeMillis());
-        AssetDataCommonSink eventAlarmSink = new AssetDataCommonSink(env, abnormalAnalysisDS, eventAlarmProp);
+        AssetDataCommonSink eventAlarmSink = new AssetDataCommonSink(env, abnormalAnalysisDS, eventAlarmProp, dorisSinkParallelism);
         eventAlarmSink.sink();
 
         env.execute("中移: asset task.");

@@ -32,7 +32,7 @@ public class FilterTaskEndProcess extends ProcessFunction<String, JSONObject> {
                     collector.collect(originObject);
                 }
             } catch (Exception e) {
-                log.error("输入内容有误，mas=" + e.getMessage());
+                log.error("输入内容有误，content： " + value +" ,msg=" + e.getMessage());
             }
 
         }

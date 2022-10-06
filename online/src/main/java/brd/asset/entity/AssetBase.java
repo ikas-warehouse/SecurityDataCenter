@@ -47,6 +47,7 @@ public class AssetBase {
     public String label_type1;
     public String label_type2;
     public String update_time;
+    public Double threat_score;
 
     public AssetBase() {
     }
