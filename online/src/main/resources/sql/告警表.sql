@@ -24,8 +24,9 @@ CREATE TABLE IF NOT EXISTS sdc.event_alarm(
     protocol varchar(64) COMMENT '协议',
     traffic_size double COMMENT '流量大小',
     file_name varchar(64) COMMENT '文件名',
-    handle varchar (1) COMMENT '是否处置“0”未处置“1”已处置',
-    handle_time varchar(32) COMMENT '处置时间'
-    )
-    DISTRIBUTED BY HASH(event_dev_ip,event_dev_mac) BUCKETS 8;
-
+    handle varchar (1) DEFAULT "0" COMMENT '是否处置“0”未处置“1”已处置',
+    handle_time varchar(32) COMMENT '处置时间',
+    rule_id varchar(64) COMMENT 'soar规则ID'
+)
+UNIQUE KEY(`event_id`)
+DISTRIBUTED BY HASH(event_id) BUCKETS 3;

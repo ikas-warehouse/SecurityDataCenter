@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS asset_base(
     sn varchar(64) COMMENT 'SN编号',
     model varchar(64) COMMENT '型号',
     business_system varchar(64) COMMENT '',
-    responsible_person varchar(16) COMMENT '责任人',
+    responsible_person varchar(255) COMMENT '责任人',
     responsible_telephone varchar(32) COMMENT '责任人电话',
     asset_desc varchar(1024) COMMENT '资产描述',
     confidentiality varchar(64) COMMENT '保密性',
@@ -39,5 +39,5 @@ CREATE TABLE IF NOT EXISTS asset_base(
     update_time varchar(64) COMMENT '更新时间',
     threat_score double NULL DEFAULT "0.0" COMMENT "威胁分数值"
 )
-UNIQUE KEY(`device_ip`, `device_mac`)
-DISTRIBUTED BY HASH(device_ip,device_mac) BUCKETS 8;
+UNIQUE KEY(`device_ip`)
+DISTRIBUTED BY HASH(device_ip) BUCKETS 8;
