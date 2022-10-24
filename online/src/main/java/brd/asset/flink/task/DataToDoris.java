@@ -20,7 +20,7 @@ import java.util.Properties;
 public class DataToDoris {
     public static void main(String[] args) throws Exception {
         //获取配置数据
-        //String propPath = "D:\\DevelopData\\Git\\securitydatacenter\\online\\src\\main\\resources\\asset_process.properties";
+        //String propPath = "D:\\DevelopData\\IDEAData\\securitydatacenter\\online\\src\\main\\resources\\asset_process.properties";
         ParameterTool parameterTool = ParameterTool.fromArgs(args);
         String propPath = parameterTool.get("conf_path");
         //------------------------------------获取配置数据 begin--------------------------------------
@@ -39,11 +39,12 @@ public class DataToDoris {
         String dorisUser = paramFromProps.get("dorisUser");
         String dorisPw = paramFromProps.get("dorisPw");
         String dorisDB = paramFromProps.get("dorisDB");
+        //parallelism
+        Integer commonParallelism = paramFromProps.getInt("import.commonParallelism");
+        Integer kafkaParallelism = paramFromProps.getInt("import.kafkaParallelism");
+        Integer dorisSinkParallelism = paramFromProps.getInt("import.dorisSinkParallelism");
         //------------------------------------获取配置数据 end--------------------------------------
 
-        Integer commonParallelism = paramFromProps.getInt("commonParallelism");
-        Integer kafkaParallelism = paramFromProps.getInt("kafkaParallelism");
-        Integer dorisSinkParallelism = paramFromProps.getInt("dorisSinkParallelism");
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(commonParallelism);

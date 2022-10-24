@@ -46,8 +46,8 @@ public class TaskEnd2DorisProcess extends ProcessFunction<String, String> {
     @Override
     public void processElement(String taskId, ProcessFunction<String, String>.Context context, Collector<String> collector) throws Exception {
         String finishTime = TimeUtils.getNow("yyyy-MM-dd HH:mm:ss");
-        String sql = "update " + db + "." + assetTaskTB + " set finish_time='" + finishTime + "' , task_state=2 where task_id=" + taskId;
-        System.out.println("sql:" + sql);
+        String sql = "update " + db + "." + assetTaskTB + " set finish_time='" + finishTime + "' , task_state='2' where task_id='" + taskId + "'";
+        //System.out.println("sql:" + sql);
         try {
             ps = connection.prepareStatement(sql);
             ps.execute();

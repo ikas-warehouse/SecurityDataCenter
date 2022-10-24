@@ -1,6 +1,7 @@
 package brd.asset.flink.sink;
 
 import brd.asset.flink.fun.JsonFilterFunction;
+import brd.common.KafkaUtil;
 import com.alibaba.fastjson.JSONAware;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.doris.flink.cfg.DorisExecutionOptions;
@@ -64,14 +65,7 @@ public class KafkaDorisSink<T> {
 
     public void sink() {
         //kafka-source
-        KafkaSource<String> source = KafkaSource.<String>builder()
-                .setBootstrapServers(brokers)
-                .setTopics(topic)
-                .setGroupId(groupId)
-                .setStartingOffsets(OffsetsInitializer.latest())
-                .setValueOnlyDeserializer(new SimpleStringSchema())
-                .build();
-
+        KafkaSource<String> source = KafkaUtil.getKafkaSource(brokers, topic, groupId);
         DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), tb + "-kafka-source").setParallelism(kafkaParallelism);
 
 

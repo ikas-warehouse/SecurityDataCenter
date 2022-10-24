@@ -128,7 +128,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                 isClear = true;
             }
             //过滤纳管资产ip
-            if ("_PERMITTED".equals(assetBase.getPermitted())) {
+            if ("1".equals(assetBase.getPermitted())) {//todo 确定纳管字段值 √
                 String ip = assetBase.getDevice_ip();
                 String mac = assetBase.getDevice_mac();
                 String unique = ip + ":" + mac;
@@ -168,7 +168,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
             alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
             alarm.setEvent_title(AlarmItem.ABNORMAL_OPEN_PORT.getEventDesc());
             alarm.setEvent_type(AlarmItem.ABNORMAL_OPEN_PORT.getEventId());
-            alarm.setEvent_level("中");
+            alarm.setEvent_level("2");//todo  重新映射123 √
             alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
             alarm.setEvent_dev_ip(ip);
             alarm.setEvent_dev_mac(mac);
@@ -184,7 +184,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                 alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
                 alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_CHANGE.getEventDesc());
                 alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_CHANGE.getEventId());
-                alarm.setEvent_level("中");
+                alarm.setEvent_level("2");
                 alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
                 alarm.setEvent_dev_ip(ip);
                 alarm.setEvent_dev_mac(mac);
@@ -202,7 +202,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                 alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
                 alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_NO_GROUP.getEventDesc());
                 alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_NO_GROUP.getEventId());
-                alarm.setEvent_level("中");
+                alarm.setEvent_level("2");
                 alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
                 alarm.setEvent_dev_ip(ip);
                 alarm.setEvent_dev_mac(mac);
@@ -215,7 +215,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
             alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
             alarm.setEvent_title(AlarmItem.ABNORMAL_ASSET_UNKNOWN.getEventDesc());
             alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_UNKNOWN.getEventId());
-            alarm.setEvent_level("中");
+            alarm.setEvent_level("2");
             alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
             alarm.setEvent_dev_ip(ip);
             alarm.setEvent_dev_mac(mac);
@@ -227,7 +227,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
             alarm.setEvent_id(UUID.randomUUID().toString().replaceAll("-", ""));
             alarm.setEvent_title(AlarmItem.ABNORMAL_PROESS.getEventDesc());
             alarm.setEvent_type(AlarmItem.ABNORMAL_PROESS.getEventId());
-            alarm.setEvent_level("中");
+            alarm.setEvent_level("2");
             alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
             alarm.setEvent_dev_ip(ip);
             alarm.setEvent_dev_mac(mac);

@@ -1,5 +1,6 @@
 package brd.asset.flink.fun;
 
+import brd.common.StringUtils;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;
@@ -20,14 +21,16 @@ public class JsonFilterFunction extends ProcessFunction<String, JSONObject> {
 
     @Override
     public void processElement(String jsonStr, Context context, Collector<JSONObject> collector) throws Exception {
-        JSONObject jsonObject = JSONObject.parseObject(jsonStr);
-        JSONObject result = new JSONObject();
-        String[] fields = strings.split(",");
-        if (jsonObject.get(fields[0]) != null) {
-            for (String field : fields) {
-                result.put(field, jsonObject.get(field));
+        if (StringUtils.isjson(jsonStr)) {
+            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
+            JSONObject result = new JSONObject();
+            String[] fields = strings.split(",");
+            if (jsonObject.get(fields[0]) != null) {
+                for (String field : fields) {
+                    result.put(field, jsonObject.get(field));
+                }
+                collector.collect(result);
             }
-            collector.collect(result);
         }
     }
 }

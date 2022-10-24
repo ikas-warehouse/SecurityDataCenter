@@ -17,9 +17,9 @@ import java.util.Properties;
 public class CommonKafkaToDoris {
     public static void main(String[] args) throws Exception {
         //获取配置数据
-        String propPath = "D:\\DevelopData\\IDEAData\\securitydatacenter\\online\\src\\main\\resources\\common_import.properties";
-        //ParameterTool parameterTool = ParameterTool.fromArgs(args);
-        //String propPath = parameterTool.get("conf_path");
+        //String propPath = "D:\\DevelopData\\IDEAData\\securitydatacenter\\online\\src\\main\\resources\\common_import.properties";
+        ParameterTool parameterTool = ParameterTool.fromArgs(args);
+        String propPath = parameterTool.get("conf_path");
         //------------------------------------获取配置数据 begin--------------------------------------
         //kafka properties
         ParameterTool paramFromProps = ParameterTool.fromPropertiesFile(propPath);
@@ -67,6 +67,6 @@ public class CommonKafkaToDoris {
         KafkaDorisSink alarmSink = new KafkaDorisSink(env, alarmPro, kafkaParallelism, dorisSinkParallelism);
         alarmSink.sink();
 
-        env.execute(dorisDB + "." + dorisTb + " - import job");
+        env.execute(dorisDB + "." + dorisTb + " import job");
     }
 }

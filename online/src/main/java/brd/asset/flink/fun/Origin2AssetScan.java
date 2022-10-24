@@ -24,18 +24,18 @@ import java.util.List;
 public class Origin2AssetScan extends RichMapFunction<JSONObject, AssetScanTask> {
     private static Logger LOG = Logger.getLogger(Origin2AssetScan.class);
 
-    private String locationPath;
-    private IpLocation ipLocation;
+    //private String locationPath;
+    //private IpLocation ipLocation;
 
-    public Origin2AssetScan(String locationPath) {
+   /* public Origin2AssetScan(String locationPath) {
         this.locationPath = locationPath;
-    }
+    }*/
 
 
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
-        ipLocation = new IpLocation(locationPath);
+        //ipLocation = new IpLocation(locationPath);
     }
 
     @Override
@@ -68,12 +68,12 @@ public class Origin2AssetScan extends RichMapFunction<JSONObject, AssetScanTask>
 
                 String province = "";
                 //ip归属省份
-                try {
+                /*try {
                     Location location = ipLocation.fetchIPLocation(deviceIpAddress.trim());
                     province = location.country;
                 } catch (Exception e) {
                     LOG.error(e.getMessage(), e);
-                }
+                }*/
                 AssetScanTask scanTask = new AssetScanTask();
                 scanTask.setAsset_id(deviceIpAddress + "_" + deviceMac);
                 scanTask.setTask_id(taskId);
