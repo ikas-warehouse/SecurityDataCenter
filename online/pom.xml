@@ -16,8 +16,8 @@
         <java.version>1.8</java.version>
         <scala.version>2.12</scala.version>
         <slf4j.version>1.7.30</slf4j.version>
-        <dev.status>provided</dev.status>
         <dev.status>compile</dev.status>
+        <dev.status>provided</dev.status>
     </properties>
     <dependencies>
 

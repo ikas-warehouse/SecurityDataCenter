@@ -77,7 +77,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                         }
                         AssetBase assetBase = JSONObject.toJavaObject(jsonObject, AssetBase.class);
 
-                        String unique = assetBase.getDevice_ip() + assetBase.getDevice_mac();
+                        String unique = assetBase.getDevice_ip() + UNIQUE_CONNECT_STR + assetBase.getDevice_mac();
 
                         unique2baseMap.put(unique, assetBase);
                     }
