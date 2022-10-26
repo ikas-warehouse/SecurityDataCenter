@@ -186,7 +186,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                 alarm.setEvent_type(AlarmItem.ABNORMAL_ASSET_CHANGE.getEventId());
                 alarm.setEvent_level("中");
                 alarm.setEvent_time(TimeUtils.getNow("yyyy-MM-dd HH:mm:ss"));
-                alarm.setEvent_dev_ip(ip);
+                alarm.setEvent_target_ip(ip);
                 alarm.setEvent_dev_mac(mac);
                 out.collect(alarm);
             }
