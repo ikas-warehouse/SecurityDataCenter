@@ -3,6 +3,7 @@ package brd.asset.flink.task;
 import brd.asset.flink.fun.JsonFilterFunction;
 import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.sink.JdbcDorisSink;
+import brd.asset.flink.sink.KafkaDorisSink;
 import brd.common.KafkaUtil;
 import brd.common.StringUtils;
 import com.alibaba.fastjson.JSON;
@@ -24,14 +25,14 @@ import java.text.SimpleDateFormat;
 import java.util.Properties;
 
 /**
- * @program PersonalToDoris
- * @description: 1.单独处理漏扫表, 更改漏洞等级vulnerability_level.
+ * @program AlarmToDoris
+ * @description: 1.日志告警表入库
  * 2.监听kafka修改告警表 处理字段 & 处理时间字段
  * 3.监听kafka修改告警表 规则字段
  * @author: 张世钰
  * @create: 2022/10/12 10:37
  */
-public class PersonalToDoris {
+public class AlarmToDoris {
     public static void main(String[] args) throws Exception {
         //获取配置数据
         //String propPath = "D:\\DevelopData\\IDEAData\\securitydatacenter\\online\\src\\main\\resources\\asset_process.properties";
@@ -43,7 +44,7 @@ public class PersonalToDoris {
         String brokers = paramFromProps.get("consumer.bootstrap.server");
         String groupId = paramFromProps.get("consumer.groupId");
         //kafka topic
-        String vulnerTopic = paramFromProps.get("vulnerTopic");
+        String alarmTopic = paramFromProps.get("alarmTopic");
         String handleTopic = paramFromProps.get("handleTopic");
         String ruleTopic = paramFromProps.get("ruleTopic");
         //doris properties
@@ -63,7 +64,7 @@ public class PersonalToDoris {
         Integer updateCommonParallelism = paramFromProps.getInt("update.commonParallelism");
         Integer updateKafkaParallelism = paramFromProps.getInt("update.kafkaParallelism");
         Integer updateJdbcSinkParallelism = paramFromProps.getInt("update.jdbcSinkParallelism");
-        
+
         //------------------------------------获取配置数据 end--------------------------------------
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -74,46 +75,27 @@ public class PersonalToDoris {
         checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION);
 
         //----------------------------------------------------------------------------------------
+        //告警表 表 字段 
+        String alarmTb = "event_alarm";
+        String alarmStrings = "event_id,event_title,event_type,event_level,event_time,event_count,event_dev_ip,event_dev_mac,event_dev_type,event_device_factory,event_device_model,event_device_name,event_source_ip,event_source_port,event_source_adress,event_target_ip,event_target_port,event_target_adress,event_affected_dev,event_affected_dev_belong,event_description,trace_log_ids,protocol,traffic_size,file_name,handle,handle_time";
 
-        //获取漏洞信息 vulner-kafka-source
-        KafkaSource<String> vulnerKafkaSource = KafkaUtil.getKafkaSource(brokers, vulnerTopic, groupId);
-        DataStreamSource<String> vulnerSource = env.fromSource(vulnerKafkaSource, WatermarkStrategy.noWatermarks(), "vulner-kafka-source").setParallelism(kafkaParallelism);
+        //告警表入库
+        Properties alarmPro = new Properties();
+        alarmPro.setProperty("brokers", brokers);
+        alarmPro.setProperty("topic", alarmTopic);
+        alarmPro.setProperty("groupId", groupId);
+        alarmPro.setProperty("host", dorisHost);
+        alarmPro.setProperty("port", dorisPort);
+        alarmPro.setProperty("db", dorisDB);
+        alarmPro.setProperty("username", dorisUser);
+        alarmPro.setProperty("password", dorisPw);
+        alarmPro.setProperty("table", alarmTb);
+        alarmPro.setProperty("strings", alarmStrings);
+        alarmPro.setProperty("labelPrefix", "event-alarm-" + System.currentTimeMillis());
+        KafkaDorisSink alarmSink = new KafkaDorisSink(env, alarmPro, kafkaParallelism, dorisSinkParallelism);
+        alarmSink.sink();
 
-        //漏扫表字段
-        String vulnerStrings = "scan_ip,vulnerability_id,task_id,record_time,state,vulnerability_name,description,cve_id,cvnd_id,cvnnd_id,vulnerability_type,solution,vulnerability_level,product,repair_status";
-        //过滤不需要字段
-        SingleOutputStreamOperator<JSONObject> vulnerDS = vulnerSource.process(new JsonFilterFunction(vulnerStrings));
-
-        //更改漏洞等级等级 vulnerability_level
-        SingleOutputStreamOperator<JSONObject> vulnerJsonDS = vulnerDS.flatMap(new FlatMapFunction<JSONObject, JSONObject>() {
-            @Override
-            public void flatMap(JSONObject result, Collector<JSONObject> collector) throws Exception {
-                if (result.get("scan_ip") != null && result.get("vulnerability_level") != null) {
-                    int vulnerability_level = Integer.parseInt(result.getString("vulnerability_level"));
-                    if (vulnerability_level < 1) {
-                        result.put("vulnerability_level", "1");
-                    } else if (vulnerability_level > 3) {
-                        result.put("vulnerability_level", "3");
-                    }
-                    collector.collect(result);
-                }
-
-            }
-        });
-
-        //写入scan_vulnerability表
-        Properties vulnerPro = new Properties();
-        vulnerPro.setProperty("host", dorisHost);
-        vulnerPro.setProperty("port", dorisPort);
-        vulnerPro.setProperty("username", dorisUser);
-        vulnerPro.setProperty("password", dorisPw);
-        vulnerPro.setProperty("db", dorisDB);
-        vulnerPro.setProperty("table", "scan_vulnerability");
-        vulnerPro.setProperty("labelPrefix", "scan-vulnerability-" + System.currentTimeMillis());
-        AssetDataCommonSink vulnerSink = new AssetDataCommonSink(env, vulnerJsonDS, vulnerPro, dorisSinkParallelism);
-        vulnerSink.sink();
         //----------------------------------------------------------------------------------------
-
         //获取告警处理信息 alarm_handle-kafka-source
         KafkaSource<String> alarm_handleKafkaSource = KafkaUtil.getKafkaSource(brokers, handleTopic, groupId);
         DataStreamSource<String> alarm_handleSource = env.fromSource(alarm_handleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_handle-kafka-source").setParallelism(updateKafkaParallelism);
@@ -180,7 +162,7 @@ public class PersonalToDoris {
         String ruleStrings = "rule_id,event_id"; //按占位符?顺序
         alarm_ruleJsonDS.addSink(new JdbcDorisSink<>(ruleSql, ruleStrings, rulePro)).setParallelism(updateJdbcSinkParallelism);
 
-        env.execute("personal to doris");
+        env.execute("alarm to doris");
 
     }
 }
