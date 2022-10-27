@@ -53,7 +53,7 @@ public class AssetProcessByStep {
         String taskName = paramFromProps.get("task.name");
         String brokers = paramFromProps.get("consumer.bootstrap.server");
         String consumerTopic = paramFromProps.get("consumer.topic");
-        String abnormalTopic = paramFromProps.get("abnormalTopic");
+        String abnormalTopic = paramFromProps.get("messageTopic");
         String groupId = paramFromProps.get("consumer.groupId");
         //doris properties
         String dorisHost = paramFromProps.get("dorisHost");
@@ -138,6 +138,9 @@ public class AssetProcessByStep {
         //AssetScanTask 转成 AssetBase类型
         DataStream<AssetScanTask> insertAssetBaseDs = abnormalAnalysisDS.getSideOutput(insertTag);
         DataStream<AssetScanTask> updateAssetBaseDs = abnormalAnalysisDS.getSideOutput(updateTag);
+
+        //insertAssetBaseDs.print("insert");
+        //updateAssetBaseDs.print("update");
 
         //插入资产基础表
         Properties assetbaseProp = new Properties();
