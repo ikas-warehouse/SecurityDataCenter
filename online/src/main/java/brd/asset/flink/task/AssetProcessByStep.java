@@ -6,8 +6,11 @@ import brd.asset.entity.AssetScanTask;
 import brd.asset.entity.EventAlarm;
 import brd.asset.flink.fun.*;
 import brd.asset.flink.sink.AssetDataCommonSink;
+import brd.common.KafkaUtil;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
@@ -18,9 +21,12 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.ProcessFunction;
+import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.apache.log4j.Logger;
 
+import java.util.HashMap;
 import java.util.Properties;
 
 
@@ -37,16 +43,9 @@ public class AssetProcessByStep {
 
     public static void main(String[] args) throws Exception {
 
-        String propPath = "/Users/mac/dev/brd_2021/SecurityDataCenter/online/src/main/resources/asset_process.properties";
+        //String propPath = "D:\\DevelopData\\IDEAData\\securitydatacenter\\online\\src\\main\\resources\\asset_process.properties";
         ParameterTool parameterTool = ParameterTool.fromArgs(args);
-        /*String propPath = parameterTool.get("conf_path");
-        Integer commonParallelism = parameterTool.getInt("common_parallelism");
-        Integer kafkaParallelism = parameterTool.getInt("kafka_parallelism");
-        Integer dorisSinkParallelism = parameterTool.getInt("doris_sink_parallelism");*/
-
-        Integer commonParallelism = 5;
-        Integer kafkaParallelism = 1;
-        Integer dorisSinkParallelism = 2;
+        String propPath = parameterTool.get("conf_path");
         //获取配置数据
         //------------------------------------获取配置数据 begin--------------------------------------
         //todo 注册全局参数，不需要每次传参
@@ -54,6 +53,7 @@ public class AssetProcessByStep {
         String taskName = paramFromProps.get("task.name");
         String brokers = paramFromProps.get("consumer.bootstrap.server");
         String consumerTopic = paramFromProps.get("consumer.topic");
+        String abnormalTopic = paramFromProps.get("abnormalTopic");
         String groupId = paramFromProps.get("consumer.groupId");
         //doris properties
         String dorisHost = paramFromProps.get("dorisHost");
@@ -70,6 +70,10 @@ public class AssetProcessByStep {
         String ipDbPath = paramFromProps.get("ipDbPath");
         Integer openPortThreshold = paramFromProps.getInt("openPortThreshold");
         String processBlackList = paramFromProps.get("processBlackList");
+        //Parallelism
+        Integer commonParallelism = paramFromProps.getInt("assetProcess.commonParallelism");
+        Integer kafkaParallelism = paramFromProps.getInt("assetProcess.kafkaParallelism");
+        Integer dorisSinkParallelism = paramFromProps.getInt("assetProcess.dorisSinkParallelism");
         //------------------------------------获取配置数据 end--------------------------------------
 
 
@@ -82,13 +86,7 @@ public class AssetProcessByStep {
 
         //step1: 读取原始数据&&过滤任务结束标志数据
         //kafka-source
-        KafkaSource<String> source = KafkaSource.<String>builder()
-                .setBootstrapServers(brokers)
-                .setTopics(consumerTopic)
-                .setGroupId(groupId)
-                .setStartingOffsets(OffsetsInitializer.latest())
-                .setValueOnlyDeserializer(new SimpleStringSchema())
-                .build();
+        KafkaSource<String> source = KafkaUtil.getKafkaSource(brokers, consumerTopic, groupId);
         DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source").setParallelism(kafkaParallelism);
 
         //DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
@@ -97,6 +95,7 @@ public class AssetProcessByStep {
         //过滤任务结束标志数据
         SingleOutputStreamOperator<JSONObject> signedDS = kafkaSource.process(new FilterTaskEndProcess());
         DataStream<String> taskEndStream = signedDS.getSideOutput(taskEndTag).map(x -> x.getString(ScanCollectConstant.TASK_ID));
+
         //修改任务状态
         Properties properties = new Properties();
         properties.setProperty("url", "jdbc:mysql://" + dorisHost + ":" + dorisPort + "?useSSL=false");
@@ -104,16 +103,15 @@ public class AssetProcessByStep {
         properties.setProperty("password", dorisPw);
         properties.setProperty("db", dorisDB);
         properties.setProperty("table", assetTaskTB);
-        taskEndStream.print("task-end: ");
 
         taskEndStream.process(new TaskEnd2DorisProcess(properties));
 
         //step4: json转AssetScan对象
-        SingleOutputStreamOperator<AssetScanTask> assetOriginStream = signedDS.map(new Origin2AssetScan(ipDbPath));
-
+        SingleOutputStreamOperator<AssetScanTask> assetOriginStream = signedDS.map(new Origin2AssetScan(/*ipDbPath*/));
         //step5: 拉宽原始数据入库
         SingleOutputStreamOperator<AssetScanTask> labeledAssetStream = assetOriginStream.map(new LabeledMap(dorisHost,
                 dorisPort, dorisDB, dorisUser, dorisPw));
+
         Properties labeledProp = new Properties();
         labeledProp.setProperty("host", dorisHost);
         labeledProp.setProperty("port", dorisPort1);
@@ -173,8 +171,12 @@ public class AssetProcessByStep {
         eventAlarmProp.setProperty("table", eventAlarmTB);
         eventAlarmProp.setProperty("labelPrefix", "event-alarm-" + System.currentTimeMillis());
         AssetDataCommonSink eventAlarmSink = new AssetDataCommonSink(env, abnormalAnalysisDS, eventAlarmProp, dorisSinkParallelism);
-        eventAlarmSink.sink();
 
+        //todo  把abnormalAnalysisDS  to json 入kafka
+        SingleOutputStreamOperator<String> abnormalAnalysisJsonDS = abnormalAnalysisDS.map(v -> JSONObject.toJSONString(v));
+        abnormalAnalysisJsonDS.sinkTo(KafkaUtil.getKafkaSink(brokers, abnormalTopic));
+
+        eventAlarmSink.sink();
         env.execute("中移: asset task.");
     }
 

@@ -34,7 +34,6 @@ public class FilterTaskEndProcess extends ProcessFunction<String, JSONObject> {
             } catch (Exception e) {
                 log.error("输入内容有误，content： " + value +" ,msg=" + e.getMessage());
             }
-
         }
     }
 }
