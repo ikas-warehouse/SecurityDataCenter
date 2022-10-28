@@ -25,7 +25,7 @@ public class JsonFilterFunction extends ProcessFunction<String, JSONObject> {
             JSONObject jsonObject = JSONObject.parseObject(jsonStr);
             JSONObject result = new JSONObject();
             String[] fields = strings.split(",");
-            if (jsonObject.get(fields[0]) != null) {
+            if (jsonObject.containsKey(fields[0]) && jsonObject.get(fields[0]) != null) {
                 for (String field : fields) {
                     result.put(field, jsonObject.get(field));
                 }
