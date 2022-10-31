@@ -21,13 +21,15 @@ public class JsonFilterFunction extends ProcessFunction<String, JSONObject> {
 
     @Override
     public void processElement(String jsonStr, Context context, Collector<JSONObject> collector) throws Exception {
-        if (StringUtils.isjson(jsonStr)) {
+        if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
             JSONObject jsonObject = JSONObject.parseObject(jsonStr);
             JSONObject result = new JSONObject();
             String[] fields = strings.split(",");
-            if (jsonObject.containsKey(fields[0]) && jsonObject.get(fields[0]) != null) {
+            if (jsonObject.get(fields[0]) != null) {
                 for (String field : fields) {
-                    result.put(field, jsonObject.get(field));
+                    if (jsonObject.get(field) != null) {
+                        result.put(field, jsonObject.get(field));
+                    }
                 }
                 collector.collect(result);
             }

@@ -103,10 +103,10 @@ public class AlarmToDoris {
         //转型JSONObject 添加:处理字段 时间字段
         SingleOutputStreamOperator<JSONObject> alarm_handleJsonDS = alarm_handleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
             @Override
-            public void flatMap(String s, Collector<JSONObject> collector) throws Exception {
-                if (StringUtils.isjson(s)) {
-                    JSONObject jsonObject = JSON.parseObject(s);
-                    if ((!jsonObject.isEmpty()) && jsonObject.get("event_id") != null) {
+            public void flatMap(String jsonStr, Collector<JSONObject> collector) throws Exception {
+                if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
+                    JSONObject jsonObject = JSON.parseObject(jsonStr);
+                    if (jsonObject.get("event_id") != null) {
                         jsonObject.put("handle", "1");
 
                         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -139,10 +139,10 @@ public class AlarmToDoris {
         //转型成JSONObject 添加 处理字段 处理事件字段
         SingleOutputStreamOperator<JSONObject> alarm_ruleJsonDS = alarm_ruleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
             @Override
-            public void flatMap(String s, Collector<JSONObject> collector) throws Exception {
-                if (StringUtils.isjson(s)) {
-                    JSONObject jsonObject = JSONObject.parseObject(s);
-                    if ((!jsonObject.isEmpty()) && jsonObject.get("event_id") != null && jsonObject.get("rule_id") != null) {
+            public void flatMap(String jsonStr, Collector<JSONObject> collector) throws Exception {
+                if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
+                    JSONObject jsonObject = JSONObject.parseObject(jsonStr);
+                    if (jsonObject.get("event_id") != null && jsonObject.get("rule_id") != null) {
                         collector.collect(jsonObject);
                     }
                 }
