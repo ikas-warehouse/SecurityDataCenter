@@ -102,7 +102,7 @@ public class AssetDataCommonSink<T> {
         pro.setProperty("line_delimiter", "\n");
         DorisOptions.Builder dorisBuilder = DorisOptions.builder();
         dorisBuilder.setFenodes(host + ":" + port)
-                .setTableIdentifier(db + "." + tb)
+                .setTableIdentifier(db + "." + tb)  
                 .setUsername(user)
                 .setPassword(pw);
         DorisExecutionOptions.Builder  executionBuilder = DorisExecutionOptions.builder();

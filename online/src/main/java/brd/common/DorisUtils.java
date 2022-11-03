@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * @program DorisUtil
+ * @program DorisUtils
  * @description:
  * @author: 张世钰
  * @create: 2022/10/26 14:39
  */
-public class DorisUtil {
+public class DorisUtils {
 
     /**
      * DataStream方式获取DorisSource, 数据为无字段信息的List数据.

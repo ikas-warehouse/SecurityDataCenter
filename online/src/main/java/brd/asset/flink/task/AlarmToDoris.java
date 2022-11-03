@@ -1,19 +1,15 @@
 package brd.asset.flink.task;
 
-import brd.asset.flink.fun.JsonFilterFunction;
-import brd.asset.flink.sink.AssetDataCommonSink;
 import brd.asset.flink.sink.JdbcDorisSink;
 import brd.asset.flink.sink.KafkaDorisSink;
-import brd.common.KafkaUtil;
+import brd.common.KafkaUtils;
 import brd.common.StringUtils;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
-import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -53,6 +49,9 @@ public class AlarmToDoris {
         String dorisUser = paramFromProps.get("dorisUser");
         String dorisPw = paramFromProps.get("dorisPw");
         String dorisDB = paramFromProps.get("dorisDB");
+        //doris tables
+        String alarmTb = paramFromProps.get("dorisTable.eventAlarm");
+        String alarmStrings = paramFromProps.get("alarmStrings");
         //jdbc properties
         String jdbc_port = paramFromProps.get("dorisPort");
         String jdbc_driver = paramFromProps.get("jdbc_driver");
@@ -75,10 +74,6 @@ public class AlarmToDoris {
         checkpointConfig.setExternalizedCheckpointCleanup(CheckpointConfig.ExternalizedCheckpointCleanup.DELETE_ON_CANCELLATION);
 
         //----------------------------------------------------------------------------------------
-        //告警表 表 字段 
-        String alarmTb = "event_alarm";
-        String alarmStrings = "event_id,event_title,event_type,event_level,event_time,event_count,event_dev_ip,event_dev_mac,event_dev_type,event_device_factory,event_device_model,event_device_name,event_source_ip,event_source_port,event_source_adress,event_target_ip,event_target_port,event_target_adress,event_affected_dev,event_affected_dev_belong,event_description,trace_log_ids,protocol,traffic_size,file_name,handle,handle_time";
-
         //告警表入库
         Properties alarmPro = new Properties();
         alarmPro.setProperty("brokers", brokers);
@@ -97,7 +92,7 @@ public class AlarmToDoris {
 
         //----------------------------------------------------------------------------------------
         //获取告警处理信息 alarm_handle-kafka-source
-        KafkaSource<String> alarm_handleKafkaSource = KafkaUtil.getKafkaSource(brokers, handleTopic, groupId);
+        KafkaSource<String> alarm_handleKafkaSource = KafkaUtils.getKafkaSource(brokers, handleTopic, groupId);
         DataStreamSource<String> alarm_handleSource = env.fromSource(alarm_handleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_handle-kafka-source").setParallelism(updateKafkaParallelism);
 
         //转型JSONObject 添加:处理字段 时间字段
@@ -127,13 +122,13 @@ public class AlarmToDoris {
         handlePro.setProperty("user", dorisUser);
         handlePro.setProperty("passwd", dorisPw);
 
-        String handleSql = "update" + " sdc.event_alarm" + " set handle=?, handle_time=? where event_id=?";
+        String handleSql = "update " + dorisDB + "." + alarmTb + " set handle=?, handle_time=? where event_id=?";
         String handleStrings = "handle,handle_time,event_id"; //按占位符?顺序
-        alarm_handleJsonDS.addSink(new JdbcDorisSink<>(handleSql, handleStrings, handlePro)).setParallelism(updateJdbcSinkParallelism);
+        alarm_handleJsonDS.addSink(new JdbcDorisSink<>(handleSql, handleStrings, handlePro)).setParallelism(updateJdbcSinkParallelism).name("handle-update-sink");
+        
         //-------------------------------------------------------------------------------
-
         //读取告警规则信息 alarm_rule-kafka-source
-        KafkaSource<String> alarm_ruleKafkaSource = KafkaUtil.getKafkaSource(brokers, ruleTopic, groupId);
+        KafkaSource<String> alarm_ruleKafkaSource = KafkaUtils.getKafkaSource(brokers, ruleTopic, groupId);
         DataStreamSource<String> alarm_ruleSource = env.fromSource(alarm_ruleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_rule-kafka-source").setParallelism(updateKafkaParallelism);
 
         //转型成JSONObject 添加 处理字段 处理事件字段
@@ -158,9 +153,9 @@ public class AlarmToDoris {
         rulePro.setProperty("db", dorisDB);
         rulePro.setProperty("user", dorisUser);
         rulePro.setProperty("passwd", dorisPw);
-        String ruleSql = "update" + " sdc.event_alarm" + " set rule_id=? where event_id=?";
+        String ruleSql = "update " + dorisDB + "." + alarmTb + " set rule_id=? where event_id=?";
         String ruleStrings = "rule_id,event_id"; //按占位符?顺序
-        alarm_ruleJsonDS.addSink(new JdbcDorisSink<>(ruleSql, ruleStrings, rulePro)).setParallelism(updateJdbcSinkParallelism);
+        alarm_ruleJsonDS.addSink(new JdbcDorisSink<>(ruleSql, ruleStrings, rulePro)).setParallelism(updateJdbcSinkParallelism).name("rule-update-sink");
 
         env.execute("alarm to doris");
 

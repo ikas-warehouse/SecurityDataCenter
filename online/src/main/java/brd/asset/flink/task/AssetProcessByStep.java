@@ -6,27 +6,20 @@ import brd.asset.entity.AssetScanTask;
 import brd.asset.entity.EventAlarm;
 import brd.asset.flink.fun.*;
 import brd.asset.flink.sink.AssetDataCommonSink;
-import brd.common.KafkaUtil;
-import com.alibaba.fastjson.JSON;
+import brd.common.KafkaUtils;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
-import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
 import org.apache.log4j.Logger;
 
-import java.util.HashMap;
 import java.util.Properties;
 
 
@@ -86,7 +79,7 @@ public class AssetProcessByStep {
 
         //step1: 读取原始数据&&过滤任务结束标志数据
         //kafka-source
-        KafkaSource<String> source = KafkaUtil.getKafkaSource(brokers, consumerTopic, groupId);
+        KafkaSource<String> source = KafkaUtils.getKafkaSource(brokers, consumerTopic, groupId);
         DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source").setParallelism(kafkaParallelism);
 
         //DataStreamSource<String> socketTextStream = env.socketTextStream("192.168.5.94", 7776);//todo 更改 kafka source
@@ -153,7 +146,7 @@ public class AssetProcessByStep {
         assetbaseProp.setProperty("labelPrefix", "asset-base-" + System.currentTimeMillis());
         SingleOutputStreamOperator<AssetBase> insertAssetBaseFinalDS = insertAssetBaseDs.map(new AssetScanTask2AssetBaseMap());
         AssetDataCommonSink assetBaseSink = new AssetDataCommonSink(env, insertAssetBaseFinalDS, assetbaseProp, dorisSinkParallelism);
-        assetBaseSink.sink();
+        assetBaseSink.sink();   
 
         //修改资产基础表
         Properties assetUpdateProp = new Properties();
@@ -177,7 +170,7 @@ public class AssetProcessByStep {
 
         //todo  把abnormalAnalysisDS  to json 入kafka
         SingleOutputStreamOperator<String> abnormalAnalysisJsonDS = abnormalAnalysisDS.map(v -> JSONObject.toJSONString(v));
-        abnormalAnalysisJsonDS.sinkTo(KafkaUtil.getKafkaSink(brokers, abnormalTopic));
+        abnormalAnalysisJsonDS.sinkTo(KafkaUtils.getKafkaSink(brokers, abnormalTopic));
 
         eventAlarmSink.sink();
         env.execute("中移: asset task.");

@@ -8,12 +8,12 @@ import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 
 /**
- * @program KafkaUtil
+ * @program KafkaUtils
  * @description: Kafka 生产者/消费者获取方法.
  * @author: 张世钰
  * @create: 2022/10/21 13:05
  */
-public class KafkaUtil {
+public class KafkaUtils {
 
     public static KafkaSource<String> getKafkaSource(String brokers, String topic, String groupId) {
         KafkaSource<String> kafkaSource = KafkaSource.<String>builder()
