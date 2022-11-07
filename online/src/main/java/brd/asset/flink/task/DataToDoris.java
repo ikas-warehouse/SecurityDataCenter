@@ -7,6 +7,7 @@ import brd.common.KafkaUtils;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.streaming.api.CheckpointingMode;
@@ -54,15 +55,20 @@ public class DataToDoris {
         String dorisDB = paramFromProps.get("dorisDB");
         //doris tables
         String formatTb = paramFromProps.get("dorisTable.eventFormat");
-        String formatStrings = paramFromProps.get("formatStrings");
+        String formatField = paramFromProps.get("formatField");
+        String formatKey = paramFromProps.get("formatKey");
         String cnvdTb = paramFromProps.get("dorisTable.cnvdVulnerability");
-        String cnvdStrings = paramFromProps.get("cnvdStrings");
+        String cnvdField = paramFromProps.get("cnvdField");
+        String cnvdKey = paramFromProps.get("cnvdKey");
         String cveTb = paramFromProps.get("dorisTable.cveVulnerability");
-        String cveStrings = paramFromProps.get("cveStrings");
+        String cveField = paramFromProps.get("cveField");
+        String cveKey = paramFromProps.get("cveKey");
         String tjTb = paramFromProps.get("dorisTable.tjThreat");
-        String tjStrings = paramFromProps.get("tjStrings");
+        String tjField = paramFromProps.get("tjField");
+        String tjKey = paramFromProps.get("tjKey");
         String scanTb = paramFromProps.get("dorisTable.scanVulnerability");
-        String scanStrings = paramFromProps.get("scanStrings");
+        String scanField = paramFromProps.get("scanField");
+        String scanKey = paramFromProps.get("scanKey");
         //parallelism
         Integer commonParallelism = paramFromProps.getInt("import.commonParallelism");
         Integer kafkaParallelism = paramFromProps.getInt("import.kafkaParallelism");
@@ -89,7 +95,8 @@ public class DataToDoris {
         formatPro.setProperty("username", dorisUser);
         formatPro.setProperty("password", dorisPw);
         formatPro.setProperty("table", formatTb);
-        formatPro.setProperty("strings", formatStrings);
+        formatPro.setProperty("fieldString", formatField);
+        formatPro.setProperty("keyString", formatKey);
         formatPro.setProperty("labelPrefix", "event-format-" + System.currentTimeMillis());
         KafkaDorisSink formatSink = new KafkaDorisSink(env, formatPro, kafkaParallelism, dorisSinkParallelism);
         formatSink.sink();
@@ -106,7 +113,8 @@ public class DataToDoris {
         cnvdPro.setProperty("username", dorisUser);
         cnvdPro.setProperty("password", dorisPw);
         cnvdPro.setProperty("table", cnvdTb);
-        cnvdPro.setProperty("strings", cnvdStrings);
+        cnvdPro.setProperty("fieldString", cnvdField);
+        cnvdPro.setProperty("keyString", cnvdKey);
         cnvdPro.setProperty("labelPrefix", "cnvd-vulnerability-" + System.currentTimeMillis());
         KafkaDorisSink cnvdSink = new KafkaDorisSink(env, cnvdPro, kafkaParallelism, dorisSinkParallelism);
         cnvdSink.sink();
@@ -123,7 +131,8 @@ public class DataToDoris {
         cvePro.setProperty("username", dorisUser);
         cvePro.setProperty("password", dorisPw);
         cvePro.setProperty("table", cveTb);
-        cvePro.setProperty("strings", cveStrings);
+        cvePro.setProperty("fieldString", cveField);
+        cvePro.setProperty("keyString", cveKey);
         cvePro.setProperty("labelPrefix", "cve-vulnerability-" + System.currentTimeMillis());
         KafkaDorisSink cveSink = new KafkaDorisSink(env, cvePro, kafkaParallelism, dorisSinkParallelism);
         cveSink.sink();
@@ -140,7 +149,8 @@ public class DataToDoris {
         tjPro.setProperty("username", dorisUser);
         tjPro.setProperty("password", dorisPw);
         tjPro.setProperty("table", tjTb);
-        tjPro.setProperty("strings", tjStrings);
+        tjPro.setProperty("fieldString", tjField);
+        tjPro.setProperty("keyString", tjKey);
         tjPro.setProperty("labelPrefix", "tj-threat-" + System.currentTimeMillis());
         KafkaDorisSink tjSink = new KafkaDorisSink(env, tjPro, kafkaParallelism, dorisSinkParallelism);
         tjSink.sink();
@@ -151,21 +161,19 @@ public class DataToDoris {
         DataStreamSource<String> scanSource = env.fromSource(scanKafkaSource, WatermarkStrategy.noWatermarks(), "scan-kafka-source").setParallelism(kafkaParallelism);
 
         //过滤不需要的字段
-        SingleOutputStreamOperator<JSONObject> scanDS = scanSource.process(new JsonFilterFunction(scanStrings));
+        SingleOutputStreamOperator<JSONObject> scanDS = scanSource.process(new JsonFilterFunction(scanField, scanKey));
 
         //更改漏洞等级等级 vulnerability_level
-        SingleOutputStreamOperator<JSONObject> scanJsonDS = scanDS.flatMap(new FlatMapFunction<JSONObject, JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> scanJsonDS = scanDS.map(new MapFunction<JSONObject, JSONObject>() {
             @Override
-            public void flatMap(JSONObject result, Collector<JSONObject> collector) throws Exception {
-                if (result.get("scan_ip") != null && result.get("vulnerability_level") != null) {
-                    int vulnerability_level = Integer.parseInt(result.getString("vulnerability_level"));
-                    if (vulnerability_level < 1) {
-                        result.put("vulnerability_level", "1");
-                    } else if (vulnerability_level > 3) {
-                        result.put("vulnerability_level", "3");
-                    }
-                    collector.collect(result);
+            public JSONObject map(JSONObject result) throws Exception {
+                int vulnerability_level = Integer.parseInt(result.getString("vulnerability_level"));
+                if (vulnerability_level < 1) {
+                    result.put("vulnerability_level", "1");
+                } else if (vulnerability_level > 3) {
+                    result.put("vulnerability_level", "3");
                 }
+                return result;
             }
         });
 

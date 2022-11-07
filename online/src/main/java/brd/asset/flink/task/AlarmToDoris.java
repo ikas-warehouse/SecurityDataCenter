@@ -51,7 +51,8 @@ public class AlarmToDoris {
         String dorisDB = paramFromProps.get("dorisDB");
         //doris tables
         String alarmTb = paramFromProps.get("dorisTable.eventAlarm");
-        String alarmStrings = paramFromProps.get("alarmStrings");
+        String alarmField = paramFromProps.get("alarmField");
+        String alarmKey = paramFromProps.get("alarmKey");
         //jdbc properties
         String jdbc_port = paramFromProps.get("dorisPort");
         String jdbc_driver = paramFromProps.get("jdbc_driver");
@@ -85,18 +86,19 @@ public class AlarmToDoris {
         alarmPro.setProperty("username", dorisUser);
         alarmPro.setProperty("password", dorisPw);
         alarmPro.setProperty("table", alarmTb);
-        alarmPro.setProperty("strings", alarmStrings);
+        alarmPro.setProperty("fieldString", alarmField);
+        alarmPro.setProperty("keyString", alarmKey);
         alarmPro.setProperty("labelPrefix", "event-alarm-" + System.currentTimeMillis());
         KafkaDorisSink alarmSink = new KafkaDorisSink(env, alarmPro, kafkaParallelism, dorisSinkParallelism);
         alarmSink.sink();
 
         //----------------------------------------------------------------------------------------
         //获取告警处理信息 alarm_handle-kafka-source
-        KafkaSource<String> alarm_handleKafkaSource = KafkaUtils.getKafkaSource(brokers, handleTopic, groupId);
-        DataStreamSource<String> alarm_handleSource = env.fromSource(alarm_handleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_handle-kafka-source").setParallelism(updateKafkaParallelism);
+        KafkaSource<String> alarmHandleKafkaSource = KafkaUtils.getKafkaSource(brokers, handleTopic, groupId);
+        DataStreamSource<String> alarmHandleSource = env.fromSource(alarmHandleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_handle-kafka-source").setParallelism(updateKafkaParallelism);
 
         //转型JSONObject 添加:处理字段 时间字段
-        SingleOutputStreamOperator<JSONObject> alarm_handleJsonDS = alarm_handleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> alarmHandleJsonDS = alarmHandleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
             @Override
             public void flatMap(String jsonStr, Collector<JSONObject> collector) throws Exception {
                 if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
@@ -124,15 +126,15 @@ public class AlarmToDoris {
 
         String handleSql = "update " + dorisDB + "." + alarmTb + " set handle=?, handle_time=? where event_id=?";
         String handleStrings = "handle,handle_time,event_id"; //按占位符?顺序
-        alarm_handleJsonDS.addSink(new JdbcDorisSink<>(handleSql, handleStrings, handlePro)).setParallelism(updateJdbcSinkParallelism).name("handle-update-sink");
+        alarmHandleJsonDS.addSink(new JdbcDorisSink<>(handleSql, handleStrings, handlePro)).setParallelism(updateJdbcSinkParallelism).name("handle-update-sink");
         
         //-------------------------------------------------------------------------------
         //读取告警规则信息 alarm_rule-kafka-source
-        KafkaSource<String> alarm_ruleKafkaSource = KafkaUtils.getKafkaSource(brokers, ruleTopic, groupId);
-        DataStreamSource<String> alarm_ruleSource = env.fromSource(alarm_ruleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_rule-kafka-source").setParallelism(updateKafkaParallelism);
+        KafkaSource<String> alarmRuleKafkaSource = KafkaUtils.getKafkaSource(brokers, ruleTopic, groupId);
+        DataStreamSource<String> alarmRuleSource = env.fromSource(alarmRuleKafkaSource, WatermarkStrategy.noWatermarks(), "alarm_rule-kafka-source").setParallelism(updateKafkaParallelism);
 
         //转型成JSONObject 添加 处理字段 处理事件字段
-        SingleOutputStreamOperator<JSONObject> alarm_ruleJsonDS = alarm_ruleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
+        SingleOutputStreamOperator<JSONObject> alarmRuleJsonDS = alarmRuleSource.flatMap(new FlatMapFunction<String, JSONObject>() {
             @Override
             public void flatMap(String jsonStr, Collector<JSONObject> collector) throws Exception {
                 if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
@@ -155,7 +157,7 @@ public class AlarmToDoris {
         rulePro.setProperty("passwd", dorisPw);
         String ruleSql = "update " + dorisDB + "." + alarmTb + " set rule_id=? where event_id=?";
         String ruleStrings = "rule_id,event_id"; //按占位符?顺序
-        alarm_ruleJsonDS.addSink(new JdbcDorisSink<>(ruleSql, ruleStrings, rulePro)).setParallelism(updateJdbcSinkParallelism).name("rule-update-sink");
+        alarmRuleJsonDS.addSink(new JdbcDorisSink<>(ruleSql, ruleStrings, rulePro)).setParallelism(updateJdbcSinkParallelism).name("rule-update-sink");
 
         env.execute("alarm to doris");
 

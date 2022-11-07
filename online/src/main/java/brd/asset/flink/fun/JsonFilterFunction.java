@@ -13,10 +13,12 @@ import org.apache.flink.util.Collector;
  */
 
 public class JsonFilterFunction extends ProcessFunction<String, JSONObject> {
-    private String strings;
+    private String fieldString;
+    private String keyString;
 
-    public JsonFilterFunction(String strings) {
-        this.strings = strings;
+    public JsonFilterFunction(String fieldString, String keyString) {
+        this.fieldString = fieldString;
+        this.keyString = keyString;
     }
 
     @Override
@@ -24,8 +26,16 @@ public class JsonFilterFunction extends ProcessFunction<String, JSONObject> {
         if (StringUtils.isjson(jsonStr) && jsonStr != null && jsonStr.replaceAll("\\s*", "").length() != 0) {
             JSONObject jsonObject = JSONObject.parseObject(jsonStr);
             JSONObject result = new JSONObject();
-            String[] fields = strings.split(",");
-            if (jsonObject.get(fields[0]) != null) {
+            String[] fields = fieldString.split(",");
+
+            boolean flag = true;
+            for (String key : keyString.split(",")) {
+                if (jsonObject.get(key) == null) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
                 for (String field : fields) {
                     if (jsonObject.get(field) != null) {
                         result.put(field, jsonObject.get(field));

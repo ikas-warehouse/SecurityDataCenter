@@ -26,7 +26,8 @@ import java.util.Properties;
 
 public class KafkaDorisSink<T> {
     private StreamExecutionEnvironment env;
-    private String strings;
+    private String fieldString;
+    private String keyString;
     private String brokers;
     private String topic;
     private String groupId;
@@ -43,7 +44,8 @@ public class KafkaDorisSink<T> {
 
     public KafkaDorisSink(StreamExecutionEnvironment env, Properties properties, Integer kafkaParallelism, Integer dorisParallelism) {
         this.env = env;
-        this.strings = properties.getProperty("strings");
+        this.fieldString = properties.getProperty("fieldString");
+        this.keyString = properties.getProperty("keyString");
         this.brokers = properties.getProperty("brokers");
         this.topic = properties.getProperty("topic");
         this.groupId = properties.getProperty("groupId");
@@ -91,8 +93,8 @@ public class KafkaDorisSink<T> {
                 .setDorisOptions(dorisBuilder.build());
 
         //过滤,转jsonObj
-        SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaSource.process(new JsonFilterFunction(strings));
-
+        SingleOutputStreamOperator<JSONObject> jsonObjDS = kafkaSource.process(new JsonFilterFunction(fieldString, keyString));
+        
         SingleOutputStreamOperator<String> jsonDS = jsonObjDS.map(JSONAware::toJSONString);
 
         jsonDS.sinkTo(builder.build()).name(tb + "-doris-sink").setParallelism(dorisParallelism);
