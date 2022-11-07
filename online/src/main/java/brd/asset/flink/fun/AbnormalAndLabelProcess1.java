@@ -99,7 +99,7 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
                     }
                 }
             }
-        }, 100, 1 * 30 * 1 * 1000);
+        }, 1 * 30 * 1 * 1000);
     }
 
     public AbnormalAndLabelProcess1(int openPortThreshold, String processBlack, String host, String port, String db, String user, String passwd) {
@@ -233,5 +233,11 @@ public class AbnormalAndLabelProcess1 extends ProcessFunction<AssetScanTask, Eve
             alarm.setEvent_dev_mac(mac);
             out.collect(alarm);
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        super.close();
+        timer.cancel();
     }
 }

@@ -89,7 +89,7 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
                     }
                 }
             }
-        }, 100, 1 * 30 * 60 * 1000);
+        },  1 * 30 * 60 * 1000);
     }
 
     @Override
@@ -160,5 +160,11 @@ public class LabeledMap extends RichMapFunction<AssetScanTask, AssetScanTask> {
             }
         }
         return labels;
+    }
+
+    @Override
+    public void close() throws Exception {
+        super.close();
+        timer.cancel();
     }
 }
