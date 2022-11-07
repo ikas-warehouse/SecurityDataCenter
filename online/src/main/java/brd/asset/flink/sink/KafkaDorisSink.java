@@ -1,7 +1,7 @@
 package brd.asset.flink.sink;
 
 import brd.asset.flink.fun.JsonFilterFunction;
-import brd.common.KafkaUtil;
+import brd.common.KafkaUtils;
 import com.alibaba.fastjson.JSONAware;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.doris.flink.cfg.DorisExecutionOptions;
@@ -10,9 +10,7 @@ import org.apache.doris.flink.cfg.DorisReadOptions;
 import org.apache.doris.flink.sink.DorisSink;
 import org.apache.doris.flink.sink.writer.SimpleStringSerializer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.source.KafkaSource;
-import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -65,7 +63,7 @@ public class KafkaDorisSink<T> {
 
     public void sink() {
         //kafka-source
-        KafkaSource<String> source = KafkaUtil.getKafkaSource(brokers, topic, groupId);
+        KafkaSource<String> source = KafkaUtils.getKafkaSource(brokers, topic, groupId);
         DataStreamSource<String> kafkaSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), tb + "-kafka-source").setParallelism(kafkaParallelism);
 
 

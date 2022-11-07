@@ -5,12 +5,12 @@ import com.alibaba.druid.pool.DruidDataSource;
 import java.util.Properties;
 
 /**
- * @program DruidUtil
+ * @program DruidUtils
  * @description: 连接池工具类
  * @author: 张世钰
  * @create: 2022/10/17 1:58
  */
-public class DruidUtil {
+public class DruidUtils {
     private DruidDataSource druidDataSource;
     private String jdbc_driver;
     private String db_url_pattern;
@@ -20,7 +20,7 @@ public class DruidUtil {
     private String user;
     private String passwd;
 
-    public DruidUtil(Properties pro) {
+    public DruidUtils(Properties pro) {
         jdbc_driver = pro.getProperty("jdbc_driver");
         db_url_pattern = pro.getProperty("db_url_pattern");
         host = pro.getProperty("host");

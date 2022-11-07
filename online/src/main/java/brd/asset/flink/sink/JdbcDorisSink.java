@@ -1,6 +1,6 @@
 package brd.asset.flink.sink;
 
-import brd.common.DruidUtil;
+import brd.common.DruidUtils;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.pool.DruidPooledConnection;
 import org.apache.flink.configuration.Configuration;
@@ -36,7 +36,7 @@ public class JdbcDorisSink<T> extends RichSinkFunction<T> {
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         // 创建连接池
-        DruidUtil druidUtil = new DruidUtil(pro);
+        DruidUtils druidUtil = new DruidUtils(pro);
         druidDataSource = druidUtil.createDorisDataSource();
 
     }
